@@ -10,6 +10,7 @@ inclusion: always
 - **Flutter SDK**: 3.16+ (managed via fvm, latest stable recommended) (Current version during development: 3.32.8)
 - **Dart Language**: 3.2+ with null safety enabled (Current version during development: 3.8.1)
 - **IDE**: VS Code with Flutter and Dart extensions or Android Studio or Kiro with Flutter and Dart Extensions
+- **Command Execution**: ALL Flutter commands MUST be executed through `fvm` (e.g., `fvm flutter run`, `fvm flutter test`)
 
 ## Documentation Requirements
 
@@ -66,6 +67,7 @@ dependencies:
   hive: ^2.2.3                    # Local storage and message persistence
   provider: ^6.1.1                # State management pattern
   permission_handler: ^12.0.1     # Platform permissions for Bluetooth/location
+  logger: ^2.0.2                  # Structured logging for debug mode
 ```
 
 ## State Management Rules
@@ -112,6 +114,40 @@ fvm flutter build linux         # Linux
 - **Desktop**: Platform-specific development tools required
 - **Hardware**: Bluetooth 4.0+ (BLE) required for core functionality
 - **Testing**: Physical devices required for Bluetooth mesh testing
+
+## Logging Requirements
+
+**Debug Mode Logging**: Implement comprehensive logging to track application processing stages and state changes.
+
+- **Required Logging Package**: Use `logger` package for structured logging
+- **Log Levels**: Implement DEBUG, INFO, WARNING, ERROR levels with appropriate filtering
+- **Debug Mode Only**: Verbose logging should only be active in debug builds (`kDebugMode`)
+- **Required Log Categories**:
+  - **Bluetooth Operations**: Connection attempts, device discovery, data transmission
+  - **Mesh Network**: Routing decisions, hop counts, peer discovery, network topology changes
+  - **Encryption**: Key exchanges, encryption/decryption operations (without exposing keys)
+  - **Message Flow**: Message sending, receiving, forwarding, and delivery confirmations
+  - **State Changes**: Provider state updates, navigation events, user actions
+  - **Performance**: Processing times for critical operations, memory usage warnings
+- **Log Format**: Include timestamps, component names, and contextual information
+- **Log Output**: Console output in debug mode, with option to write to file for debugging
+
+**Implementation Pattern**:
+```dart
+import 'package:logger/logger.dart';
+import 'package:flutter/foundation.dart';
+
+final Logger _logger = Logger(
+  level: kDebugMode ? Level.debug : Level.warning,
+  printer: PrettyPrinter(methodCount: 2, errorMethodCount: 8),
+);
+
+// Usage examples:
+_logger.d('Bluetooth: Attempting connection to device ${device.name}');
+_logger.i('Mesh: Message forwarded to ${hopCount + 1} hops');
+_logger.w('Encryption: Key rotation needed for channel ${channelId}');
+_logger.e('Network: Failed to deliver message after ${maxRetries} attempts');
+```
 
 ## Security Requirements
 

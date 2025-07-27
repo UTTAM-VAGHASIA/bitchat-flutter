@@ -285,18 +285,15 @@ class PlatformServiceImpl implements PlatformService {
   @override
   Future<PlatformInfo> getPlatformInfo() async {
     // Placeholder implementation
-    return const PlatformInfo(
+    return PlatformInfo(
       type: PlatformType.android,
       version: '1.0.0',
       deviceModel: 'Unknown',
-      capabilities: [Capability.bluetooth, Capability.storage],
-      performance: PerformanceProfile(
-        tier: PerformanceTier.medium,
-        memoryMB: 2048,
-        cpuCores: 4,
-        hasHardwareEncryption: false,
-        batteryOptimizationFactor: 1.0,
-      ),
+      capabilities: [
+        PlatformCapability.bluetooth,
+        PlatformCapability.fileSystem,
+      ],
+      performance: PerformanceProfile.medium,
     );
   }
 

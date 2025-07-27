@@ -1,10 +1,98 @@
-/// Platform information model containing device and capability details
+/// Enumeration of supported platform types
+enum PlatformType { android, ios, windows, macos, linux, unknown }
+
+/// Enumeration of platform capabilities relevant to BitChat
+enum PlatformCapability {
+  bluetooth,
+  bluetoothLowEnergy,
+  bluetoothAdvertising,
+  bluetoothScanning,
+  backgroundProcessing,
+  locationServices,
+  secureStorage,
+  biometricAuthentication,
+  notifications,
+  fileSystem,
+  networkConnectivity,
+}
+
+/// Performance profile categories for device optimization
+enum PerformanceProfile {
+  /// High-end devices with ample resources
+  high,
+
+  /// Mid-range devices with moderate resources
+  medium,
+
+  /// Low-end devices requiring optimization
+  low,
+
+  /// Unknown performance characteristics
+  unknown,
+}
+
+/// Battery optimization status
+enum BatteryOptimizationStatus {
+  /// Battery optimization is active
+  enabled,
+
+  /// Battery optimization is disabled
+  disabled,
+
+  /// Battery optimization status is unknown
+  unknown,
+
+  /// Battery optimization is not supported on this platform
+  notSupported,
+}
+
+/// Comprehensive information about the current platform
+///
+/// This model contains all relevant information about the device and platform
+/// that affects BitChat's functionality, performance, and capabilities.
 class PlatformInfo {
+  /// The type of platform (iOS, Android, desktop)
   final PlatformType type;
+
+  /// Platform version (e.g., "iOS 17.2", "Android 14", "Windows 11")
   final String version;
+
+  /// Device model identifier (e.g., "iPhone 15 Pro", "Pixel 8")
   final String deviceModel;
-  final List<Capability> capabilities;
+
+  /// List of capabilities supported by this platform
+  final List<PlatformCapability> capabilities;
+
+  /// Performance profile for optimization decisions
   final PerformanceProfile performance;
+
+  /// Additional platform-specific metadata
+  final Map<String, dynamic> metadata;
+
+  /// Whether the device supports Bluetooth Low Energy
+  bool get supportsBluetooth =>
+      capabilities.contains(PlatformCapability.bluetooth);
+
+  /// Whether the device supports BLE advertising
+  bool get supportsBluetoothAdvertising =>
+      capabilities.contains(PlatformCapability.bluetoothAdvertising);
+
+  /// Whether the device supports background processing
+  bool get supportsBackgroundProcessing =>
+      capabilities.contains(PlatformCapability.backgroundProcessing);
+
+  /// Whether the device has secure storage capabilities
+  bool get supportsSecureStorage =>
+      capabilities.contains(PlatformCapability.secureStorage);
+
+  /// Whether this is a mobile platform (iOS or Android)
+  bool get isMobile => type == PlatformType.ios || type == PlatformType.android;
+
+  /// Whether this is a desktop platform
+  bool get isDesktop =>
+      type == PlatformType.windows ||
+      type == PlatformType.macos ||
+      type == PlatformType.linux;
 
   const PlatformInfo({
     required this.type,
@@ -12,14 +100,17 @@ class PlatformInfo {
     required this.deviceModel,
     required this.capabilities,
     required this.performance,
+    this.metadata = const {},
   });
 
+  /// Creates a copy of this PlatformInfo with updated values
   PlatformInfo copyWith({
     PlatformType? type,
     String? version,
     String? deviceModel,
-    List<Capability>? capabilities,
+    List<PlatformCapability>? capabilities,
     PerformanceProfile? performance,
+    Map<String, dynamic>? metadata,
   }) {
     return PlatformInfo(
       type: type ?? this.type,
@@ -27,220 +118,64 @@ class PlatformInfo {
       deviceModel: deviceModel ?? this.deviceModel,
       capabilities: capabilities ?? this.capabilities,
       performance: performance ?? this.performance,
+      metadata: metadata ?? this.metadata,
     );
-  }
-
-  bool hasCapability(Capability capability) {
-    return capabilities.contains(capability);
   }
 
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
+
     return other is PlatformInfo &&
         other.type == type &&
         other.version == version &&
         other.deviceModel == deviceModel &&
-        other.capabilities == capabilities &&
-        other.performance == performance;
+        _listEquals(other.capabilities, capabilities) &&
+        other.performance == performance &&
+        _mapEquals(other.metadata, metadata);
   }
 
   @override
   int get hashCode {
-    return type.hashCode ^
-        version.hashCode ^
-        deviceModel.hashCode ^
-        capabilities.hashCode ^
-        performance.hashCode;
-  }
-
-  @override
-  String toString() {
-    return 'PlatformInfo(type: $type, version: $version, model: $deviceModel)';
-  }
-}
-
-/// Supported platform types
-enum PlatformType { android, ios, windows, macos, linux, web }
-
-extension PlatformTypeExtension on PlatformType {
-  bool get isMobile => this == PlatformType.android || this == PlatformType.ios;
-  bool get isDesktop =>
-      this == PlatformType.windows ||
-      this == PlatformType.macos ||
-      this == PlatformType.linux;
-  bool get isWeb => this == PlatformType.web;
-
-  String get displayName {
-    switch (this) {
-      case PlatformType.android:
-        return 'Android';
-      case PlatformType.ios:
-        return 'iOS';
-      case PlatformType.windows:
-        return 'Windows';
-      case PlatformType.macos:
-        return 'macOS';
-      case PlatformType.linux:
-        return 'Linux';
-      case PlatformType.web:
-        return 'Web';
-    }
-  }
-}
-
-/// Device capabilities
-enum Capability {
-  bluetooth,
-  bluetoothLowEnergy,
-  location,
-  camera,
-  microphone,
-  storage,
-  notifications,
-  backgroundProcessing,
-  networkAccess,
-  fileSystem,
-}
-
-extension CapabilityExtension on Capability {
-  String get displayName {
-    switch (this) {
-      case Capability.bluetooth:
-        return 'Bluetooth';
-      case Capability.bluetoothLowEnergy:
-        return 'Bluetooth Low Energy';
-      case Capability.location:
-        return 'Location Services';
-      case Capability.camera:
-        return 'Camera';
-      case Capability.microphone:
-        return 'Microphone';
-      case Capability.storage:
-        return 'Storage';
-      case Capability.notifications:
-        return 'Notifications';
-      case Capability.backgroundProcessing:
-        return 'Background Processing';
-      case Capability.networkAccess:
-        return 'Network Access';
-      case Capability.fileSystem:
-        return 'File System';
-    }
-  }
-
-  bool get isRequired {
-    switch (this) {
-      case Capability.bluetooth:
-      case Capability.bluetoothLowEnergy:
-      case Capability.storage:
-        return true;
-      default:
-        return false;
-    }
-  }
-}
-
-/// Performance profile for the device
-class PerformanceProfile {
-  final PerformanceTier tier;
-  final int memoryMB;
-  final int cpuCores;
-  final bool hasHardwareEncryption;
-  final double batteryOptimizationFactor;
-
-  const PerformanceProfile({
-    required this.tier,
-    required this.memoryMB,
-    required this.cpuCores,
-    required this.hasHardwareEncryption,
-    required this.batteryOptimizationFactor,
-  });
-
-  PerformanceProfile copyWith({
-    PerformanceTier? tier,
-    int? memoryMB,
-    int? cpuCores,
-    bool? hasHardwareEncryption,
-    double? batteryOptimizationFactor,
-  }) {
-    return PerformanceProfile(
-      tier: tier ?? this.tier,
-      memoryMB: memoryMB ?? this.memoryMB,
-      cpuCores: cpuCores ?? this.cpuCores,
-      hasHardwareEncryption:
-          hasHardwareEncryption ?? this.hasHardwareEncryption,
-      batteryOptimizationFactor:
-          batteryOptimizationFactor ?? this.batteryOptimizationFactor,
+    return Object.hash(
+      type,
+      version,
+      deviceModel,
+      Object.hashAll(capabilities),
+      performance,
+      Object.hashAll(metadata.entries),
     );
   }
 
   @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is PerformanceProfile &&
-        other.tier == tier &&
-        other.memoryMB == memoryMB &&
-        other.cpuCores == cpuCores &&
-        other.hasHardwareEncryption == hasHardwareEncryption &&
-        other.batteryOptimizationFactor == batteryOptimizationFactor;
-  }
-
-  @override
-  int get hashCode {
-    return tier.hashCode ^
-        memoryMB.hashCode ^
-        cpuCores.hashCode ^
-        hasHardwareEncryption.hashCode ^
-        batteryOptimizationFactor.hashCode;
-  }
-
-  @override
   String toString() {
-    return 'PerformanceProfile(tier: $tier, memory: ${memoryMB}MB, cores: $cpuCores)';
-  }
-}
-
-/// Performance tier classification
-enum PerformanceTier { low, medium, high, premium }
-
-extension PerformanceTierExtension on PerformanceTier {
-  String get displayName {
-    switch (this) {
-      case PerformanceTier.low:
-        return 'Low Performance';
-      case PerformanceTier.medium:
-        return 'Medium Performance';
-      case PerformanceTier.high:
-        return 'High Performance';
-      case PerformanceTier.premium:
-        return 'Premium Performance';
-    }
+    return 'PlatformInfo('
+        'type: $type, '
+        'version: $version, '
+        'deviceModel: $deviceModel, '
+        'capabilities: $capabilities, '
+        'performance: $performance, '
+        'metadata: $metadata'
+        ')';
   }
 
-  int get maxConcurrentConnections {
-    switch (this) {
-      case PerformanceTier.low:
-        return 2;
-      case PerformanceTier.medium:
-        return 4;
-      case PerformanceTier.high:
-        return 6;
-      case PerformanceTier.premium:
-        return 8;
+  /// Helper method to compare lists
+  bool _listEquals<T>(List<T>? a, List<T>? b) {
+    if (a == null) return b == null;
+    if (b == null || a.length != b.length) return false;
+    for (int index = 0; index < a.length; index += 1) {
+      if (a[index] != b[index]) return false;
     }
+    return true;
   }
 
-  Duration get backgroundTaskInterval {
-    switch (this) {
-      case PerformanceTier.low:
-        return const Duration(seconds: 60);
-      case PerformanceTier.medium:
-        return const Duration(seconds: 30);
-      case PerformanceTier.high:
-        return const Duration(seconds: 15);
-      case PerformanceTier.premium:
-        return const Duration(seconds: 10);
+  /// Helper method to compare maps
+  bool _mapEquals<T, U>(Map<T, U>? a, Map<T, U>? b) {
+    if (a == null) return b == null;
+    if (b == null || a.length != b.length) return false;
+    for (final T key in a.keys) {
+      if (!b.containsKey(key) || b[key] != a[key]) return false;
     }
+    return true;
   }
 }

@@ -4,14 +4,14 @@
 
 BitChat implements an IRC-style command system that provides users with powerful control over messaging, channels, and network operations. This document specifies the complete command interface for the Flutter implementation, ensuring full compatibility with the iOS and Android versions.
 
-## Command Architecture
+## Flutter Command Architecture
 
-### Command Parser Design
+### Flutter Command Parser Design
 
-The command system uses a centralized parser with the following structure:
+The command system uses a centralized parser with Flutter-specific optimizations and reactive state management:
 
 ```dart
-class CommandParser {
+class FlutterCommandParser extends ChangeNotifier {
   static const String COMMAND_PREFIX = '/';
   static final RegExp _commandRegex = RegExp(r'^/(\w+)(?:\s+(.*))?$');
   
@@ -47,48 +47,194 @@ class CommandParser {
 }
 ```
 
-### Command Registry
+### Flutter Command Registry with Provider Integration
 
-Commands are registered in a centralized registry for extensibility:
+Commands are registered in a centralized registry with Flutter Provider integration for reactive UI updates:
 
 ```dart
-class CommandRegistry {
-  static final Map<String, CommandHandler> _handlers = {};
-  static final Map<String, CommandMetadata> _metadata = {};
+class FlutterCommandRegistry extends ChangeNotifier {
+  static final FlutterCommandRegistry _instance = FlutterCommandRegistry._internal();
+  factory FlutterCommandRegistry() => _instance;
+  FlutterCommandRegistry._internal();
   
-  static void registerCommand(String name, CommandHandler handler, CommandMetadata metadata) {
+  final Map<String, CommandHandler> _handlers = {};
+  final Map<String, CommandMetadata> _metadata = {};
+  final List<CommandExecutionResult> _commandHistory = [];
+  
+  // Reactive getters for UI
+  List<CommandExecutionResult> get commandHistory => List.unmodifiable(_commandHistory);
+  List<String> get availableCommands => _handlers.keys.toList();
+  
+  void registerCommand(String name, CommandHandler handler, CommandMetadata metadata) {
     _handlers[name] = handler;
     _metadata[name] = metadata;
+    notifyListeners(); // Notify UI of new commands
   }
   
-  static Future<CommandExecutionResult> executeCommand(
+  Future<CommandExecutionResult> executeCommand(
     String command, 
     List<String> args, 
     CommandContext context
   ) async {
     final handler = _handlers[command];
     if (handler == null) {
-      return CommandExecutionResult.error('Unknown command: $command');
+      final result = CommandExecutionResult.error('Unknown command: $command');
+      _addToHistory(result);
+      return result;
     }
     
     final metadata = _metadata[command]!;
     
-    // Validate permissions
-    if (!_hasPermission(context.user, metadata.requiredPermission)) {
-      return CommandExecutionResult.error('Insufficient permissions');
-    }
-    
-    // Validate arguments
-    final validationResult = _validateArguments(args, metadata);
-    if (!validationResult.isValid) {
-      return CommandExecutionResult.error(validationResult.errorMessage);
-    }
+    // Show loading state in UI
+    notifyListeners();
     
     try {
-      return await handler(args, context);
+      // Validate permissions
+      if (!_hasPermission(context.user, metadata.requiredPermission)) {
+        final result = CommandExecutionResult.error('Insufficient permissions');
+        _addToHistory(result);
+        return result;
+      }
+      
+      // Validate arguments
+      final validationResult = _validateArguments(args, metadata);
+      if (!validationResult.isValid) {
+        final result = CommandExecutionResult.error(validationResult.errorMessage);
+        _addToHistory(result);
+        return result;
+      }
+      
+      // Execute command with timeout
+      final result = await handler(args, context)
+          .timeout(Duration(seconds: 30), onTimeout: () {
+        return CommandExecutionResult.error('Command timed out');
+      });
+      
+      _addToHistory(result);
+      return result;
+      
     } catch (e) {
-      return CommandExecutionResult.error('Command failed: ${e.toString()}');
+      final result = CommandExecutionResult.error('Command failed: ${e.toString()}');
+      _addToHistory(result);
+      return result;
+    } finally {
+      // Update UI state
+      notifyListeners();
     }
+  }
+  
+  void _addToHistory(CommandExecutionResult result) {
+    _commandHistory.add(result);
+    
+    // Keep only last 100 commands
+    if (_commandHistory.length > 100) {
+      _commandHistory.removeAt(0);
+    }
+    
+    notifyListeners();
+  }
+  
+  // Auto-completion support
+  List<String> getCommandSuggestions(String partial) {
+    return _handlers.keys
+        .where((cmd) => cmd.toLowerCase().startsWith(partial.toLowerCase()))
+        .toList()
+        ..sort();
+  }
+  
+  // Get command help
+  String? getCommandHelp(String command) {
+    final metadata = _metadata[command];
+    return metadata?.description;
+  }
+  
+  // Clear command history
+  void clearHistory() {
+    _commandHistory.clear();
+    notifyListeners();
+  }
+}
+
+// Flutter-specific command context with UI integration
+class FlutterCommandContext extends CommandContext {
+  final BuildContext buildContext;
+  final ScaffoldMessengerState scaffoldMessenger;
+  
+  FlutterCommandContext({
+    required this.buildContext,
+    required this.scaffoldMessenger,
+    required User user,
+    Channel? currentChannel,
+    required ChannelService channelService,
+    required MessagingService messagingService,
+    required MeshService meshService,
+    required UserService userService,
+    required UIService uiService,
+    required SecurityService securityService,
+    required LogService logService,
+  }) : super(
+    user: user,
+    currentChannel: currentChannel,
+    channelService: channelService,
+    messagingService: messagingService,
+    meshService: meshService,
+    userService: userService,
+    uiService: uiService,
+    securityService: securityService,
+    logService: logService,
+  );
+  
+  // Flutter-specific UI helpers
+  void showSnackBar(String message, {bool isError = false}) {
+    scaffoldMessenger.showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError 
+          ? Theme.of(buildContext).colorScheme.error
+          : null,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+  
+  Future<bool> showConfirmationDialog(String title, String message) async {
+    return await showDialog<bool>(
+      context: buildContext,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Confirm'),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+  
+  void showLoadingDialog(String message) {
+    showDialog(
+      context: buildContext,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        content: Row(
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(width: 16),
+            Expanded(child: Text(message)),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void hideLoadingDialog() {
+    Navigator.of(buildContext).pop();
   }
 }
 ```

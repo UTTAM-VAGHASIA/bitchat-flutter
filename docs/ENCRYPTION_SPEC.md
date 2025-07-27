@@ -30,11 +30,26 @@ dependencies:
   cryptography: ^2.7.0
   crypto: ^3.0.3
   convert: ^3.1.1
+  pointycastle: ^3.7.3  # For additional crypto algorithms
+  
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  mocktail: ^0.3.0
 
-// Core crypto service
+// Core crypto service with Flutter-specific optimizations
 import 'package:cryptography/cryptography.dart';
+import 'package:crypto/crypto.dart';
+import 'package:convert/convert.dart';
+import 'dart:typed_data';
+import 'dart:math';
 
 class BitChatCrypto {
+  static final BitChatCrypto _instance = BitChatCrypto._internal();
+  factory BitChatCrypto() => _instance;
+  BitChatCrypto._internal();
+  
+  // Core cryptographic algorithms
   static final _x25519 = X25519();
   static final _ed25519 = Ed25519();
   static final _aesGcm = AesGcm.with256bits();
@@ -43,7 +58,110 @@ class BitChatCrypto {
   static final _argon2id = Argon2id();
   
   // Secure random number generator
-  static final _secureRandom = SecureRandom.fast;
+  static final _secureRandom = Random.secure();
+  
+  // Performance optimization: cache frequently used objects
+  final Map<String, SimpleKeyPair> _keyPairCache = {};
+  final Map<String, SecretKey> _derivedKeyCache = {};
+  
+  // Initialize crypto subsystem
+  Future<void> initialize() async {
+    try {
+      // Warm up crypto algorithms
+      await _warmUpCrypto();
+      
+      // Initialize platform-specific optimizations
+      await _initializePlatformOptimizations();
+      
+      print('BitChatCrypto initialized successfully');
+    } catch (e) {
+      print('Failed to initialize BitChatCrypto: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> _warmUpCrypto() async {
+    // Perform small crypto operations to warm up algorithms
+    final testKey = await _x25519.newKeyPair();
+    final testMessage = Uint8List.fromList([1, 2, 3, 4]);
+    
+    // Warm up AES-GCM
+    final secretKey = SecretKey(List.generate(32, (i) => i));
+    await _aesGcm.encrypt(testMessage, secretKey: secretKey);
+    
+    // Warm up Ed25519
+    await _ed25519.sign(testMessage, keyPair: testKey);
+    
+    print('Crypto algorithms warmed up');
+  }
+  
+  Future<void> _initializePlatformOptimizations() async {
+    // Platform-specific crypto optimizations
+    if (Platform.isIOS) {
+      await _initializeIOSCrypto();
+    } else if (Platform.isAndroid) {
+      await _initializeAndroidCrypto();
+    }
+  }
+  
+  Future<void> _initializeIOSCrypto() async {
+    // iOS-specific crypto initialization
+    // Could integrate with Secure Enclave if available
+    print('iOS crypto optimizations initialized');
+  }
+  
+  Future<void> _initializeAndroidCrypto() async {
+    // Android-specific crypto initialization
+    // Could integrate with Android Keystore if available
+    print('Android crypto optimizations initialized');
+  }
+  
+  // Secure random bytes generation
+  Uint8List generateSecureRandomBytes(int length) {
+    final bytes = Uint8List(length);
+    for (int i = 0; i < length; i++) {
+      bytes[i] = _secureRandom.nextInt(256);
+    }
+    return bytes;
+  }
+  
+  // Key pair generation with caching
+  Future<SimpleKeyPair> generateKeyPair(String algorithm, {String? cacheKey}) async {
+    if (cacheKey != null && _keyPairCache.containsKey(cacheKey)) {
+      return _keyPairCache[cacheKey]!;
+    }
+    
+    SimpleKeyPair keyPair;
+    switch (algorithm.toLowerCase()) {
+      case 'x25519':
+        keyPair = await _x25519.newKeyPair();
+        break;
+      case 'ed25519':
+        keyPair = await _ed25519.newKeyPair();
+        break;
+      default:
+        throw ArgumentError('Unsupported algorithm: $algorithm');
+    }
+    
+    if (cacheKey != null) {
+      _keyPairCache[cacheKey] = keyPair;
+    }
+    
+    return keyPair;
+  }
+  
+  // Clear sensitive data from cache
+  void clearCache() {
+    _keyPairCache.clear();
+    _derivedKeyCache.clear();
+    print('Crypto cache cleared');
+  }
+  
+  // Dispose and cleanup
+  void dispose() {
+    clearCache();
+    print('BitChatCrypto disposed');
+  }
 }
 ```
 
@@ -75,90 +193,389 @@ class PrivateMessageCrypto {
 
 ### Session Key Derivation
 
-**HKDF-SHA256 Implementation:**
+**HKDF-SHA256 Implementation with Flutter Optimizations:**
 
 ```dart
 class SessionKeyDerivation {
-  static Future<SecretKey> deriveSessionKey(
+  static final SessionKeyDerivation _instance = SessionKeyDerivation._internal();
+  factory SessionKeyDerivation() => _instance;
+  SessionKeyDerivation._internal();
+  
+  // Cache for derived keys to improve performance
+  final Map<String, SecretKey> _derivedKeyCache = {};
+  static const int MAX_CACHE_SIZE = 100;
+  
+  Future<SecretKey> deriveSessionKey(
     SecretKey sharedSecret,
     Uint8List salt,
-    String info,
-  ) async {
-    final hkdf = Hkdf.sha256();
-    return await hkdf.deriveKey(
-      secretKey: sharedSecret,
-      nonce: salt,
-      info: utf8.encode(info),
-      outputLength: 32, // 256 bits for AES-256
-    );
+    String info, {
+    bool useCache = true,
+  }) async {
+    // Create cache key
+    final cacheKey = useCache ? _createCacheKey(sharedSecret, salt, info) : null;
+    
+    // Check cache first
+    if (cacheKey != null && _derivedKeyCache.containsKey(cacheKey)) {
+      return _derivedKeyCache[cacheKey]!;
+    }
+    
+    try {
+      final hkdf = Hkdf.sha256();
+      final derivedKey = await hkdf.deriveKey(
+        secretKey: sharedSecret,
+        nonce: salt,
+        info: utf8.encode(info),
+        outputLength: 32, // 256 bits for AES-256
+      );
+      
+      // Cache the result if caching is enabled
+      if (cacheKey != null) {
+        _cacheKey(cacheKey, derivedKey);
+      }
+      
+      return derivedKey;
+    } catch (e) {
+      throw CryptoException('Key derivation failed: $e');
+    }
+  }
+  
+  String _createCacheKey(SecretKey sharedSecret, Uint8List salt, String info) {
+    // Create a hash-based cache key (don't store actual secret)
+    final keyBytes = sharedSecret.extractSync();
+    final combined = <int>[
+      ...keyBytes,
+      ...salt,
+      ...utf8.encode(info),
+    ];
+    final hash = sha256.convert(combined);
+    return hash.toString();
+  }
+  
+  void _cacheKey(String cacheKey, SecretKey key) {
+    // Implement LRU cache behavior
+    if (_derivedKeyCache.length >= MAX_CACHE_SIZE) {
+      final oldestKey = _derivedKeyCache.keys.first;
+      _derivedKeyCache.remove(oldestKey);
+    }
+    
+    _derivedKeyCache[cacheKey] = key;
   }
   
   // Standard derivation parameters
   static const String PRIVATE_MESSAGE_INFO = "BitChat-Private-v1";
   static const String CHANNEL_MESSAGE_INFO = "BitChat-Channel-v1";
+  static const String KEY_ROTATION_INFO = "BitChat-KeyRotation-v1";
+  static const String EMERGENCY_INFO = "BitChat-Emergency-v1";
+  
+  // Derive multiple keys from single shared secret
+  Future<Map<String, SecretKey>> deriveMultipleKeys(
+    SecretKey sharedSecret,
+    Uint8List salt,
+    Map<String, String> keyInfos,
+  ) async {
+    final results = <String, SecretKey>{};
+    
+    for (final entry in keyInfos.entries) {
+      results[entry.key] = await deriveSessionKey(
+        sharedSecret,
+        salt,
+        entry.value,
+      );
+    }
+    
+    return results;
+  }
+  
+  // Key derivation with custom parameters
+  Future<SecretKey> deriveCustomKey(
+    SecretKey inputKey,
+    Uint8List salt,
+    String info,
+    int outputLength, {
+    HashAlgorithm hashAlgorithm = const Sha256(),
+  }) async {
+    final hkdf = Hkdf(hashAlgorithm);
+    
+    return await hkdf.deriveKey(
+      secretKey: inputKey,
+      nonce: salt,
+      info: utf8.encode(info),
+      outputLength: outputLength,
+    );
+  }
+  
+  // Clear cache for security
+  void clearCache() {
+    _derivedKeyCache.clear();
+  }
+  
+  // Get cache statistics
+  Map<String, int> getCacheStats() {
+    return {
+      'size': _derivedKeyCache.length,
+      'maxSize': MAX_CACHE_SIZE,
+    };
+  }
+}
+
+// Exception class for crypto errors
+class CryptoException implements Exception {
+  final String message;
+  final dynamic originalError;
+  
+  const CryptoException(this.message, {this.originalError});
+  
+  @override
+  String toString() => 'CryptoException: $message';
 }
 ```
 
 ### Message Encryption
 
-**AES-256-GCM Implementation:**
+**AES-256-GCM Implementation with Flutter Performance Optimizations:**
 
 ```dart
 class MessageEncryption {
-  static Future<EncryptedMessage> encryptPrivateMessage(
+  static final MessageEncryption _instance = MessageEncryption._internal();
+  factory MessageEncryption() => _instance;
+  MessageEncryption._internal();
+  
+  // Performance optimization: reuse cipher instances
+  final AesGcm _aesGcm = AesGcm.with256bits();
+  
+  // Nonce tracking for replay protection
+  final Set<String> _usedNonces = {};
+  static const int MAX_NONCE_CACHE = 10000;
+  
+  Future<EncryptedMessage> encryptPrivateMessage(
     Uint8List plaintext,
     SecretKey sessionKey,
     Uint8List senderId,
-    Uint8List recipientId,
-  ) async {
-    // Generate nonce: 8 bytes timestamp + 4 bytes random
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final timestampBytes = ByteData(8)..setUint64(0, timestamp, Endian.big);
-    final randomBytes = BitChatCrypto._secureRandom.nextBytes(4);
-    final nonce = Uint8List.fromList([
+    Uint8List recipientId, {
+    DateTime? timestamp,
+  }) async {
+    try {
+      // Input validation
+      if (plaintext.isEmpty) {
+        throw CryptoException('Plaintext cannot be empty');
+      }
+      if (senderId.length != 4 || recipientId.length != 4) {
+        throw CryptoException('Invalid sender or recipient ID length');
+      }
+      
+      // Generate nonce: 8 bytes timestamp + 4 bytes random
+      final messageTimestamp = timestamp ?? DateTime.now();
+      final nonce = _generateNonce(messageTimestamp);
+      
+      // Ensure nonce uniqueness
+      final nonceHex = hex.encode(nonce);
+      if (_usedNonces.contains(nonceHex)) {
+        throw CryptoException('Nonce collision detected');
+      }
+      
+      // Additional authenticated data
+      final aad = _buildAAD(senderId, recipientId, MessageType.privateMessage);
+      
+      // Encrypt with performance monitoring
+      final stopwatch = Stopwatch()..start();
+      
+      final secretBox = await _aesGcm.encrypt(
+        plaintext,
+        secretKey: sessionKey,
+        nonce: nonce,
+        aad: aad,
+      );
+      
+      stopwatch.stop();
+      
+      // Log performance metrics
+      if (stopwatch.elapsedMilliseconds > 100) {
+        print('Warning: Encryption took ${stopwatch.elapsedMilliseconds}ms');
+      }
+      
+      // Track nonce usage
+      _trackNonce(nonceHex);
+      
+      return EncryptedMessage(
+        ciphertext: secretBox.cipherText,
+        nonce: nonce,
+        tag: secretBox.mac.bytes,
+        aad: aad,
+        timestamp: messageTimestamp,
+      );
+      
+    } catch (e) {
+      throw CryptoException('Private message encryption failed: $e');
+    }
+  }
+  
+  Future<Uint8List> decryptPrivateMessage(
+    EncryptedMessage encryptedMessage,
+    SecretKey sessionKey, {
+    bool verifyTimestamp = true,
+  }) async {
+    try {
+      // Input validation
+      if (encryptedMessage.ciphertext.isEmpty) {
+        throw CryptoException('Ciphertext cannot be empty');
+      }
+      if (encryptedMessage.nonce.length != 12) {
+        throw CryptoException('Invalid nonce length');
+      }
+      if (encryptedMessage.tag.length != 16) {
+        throw CryptoException('Invalid authentication tag length');
+      }
+      
+      // Timestamp verification
+      if (verifyTimestamp) {
+        _verifyMessageTimestamp(encryptedMessage);
+      }
+      
+      // Replay protection
+      final nonceHex = hex.encode(encryptedMessage.nonce);
+      if (_usedNonces.contains(nonceHex)) {
+        throw CryptoException('Message replay detected');
+      }
+      
+      // Decrypt with performance monitoring
+      final stopwatch = Stopwatch()..start();
+      
+      final secretBox = SecretBox(
+        encryptedMessage.ciphertext,
+        nonce: encryptedMessage.nonce,
+        mac: Mac(encryptedMessage.tag),
+      );
+      
+      final plaintext = await _aesGcm.decrypt(
+        secretBox,
+        secretKey: sessionKey,
+        aad: encryptedMessage.aad,
+      );
+      
+      stopwatch.stop();
+      
+      // Log performance metrics
+      if (stopwatch.elapsedMilliseconds > 100) {
+        print('Warning: Decryption took ${stopwatch.elapsedMilliseconds}ms');
+      }
+      
+      // Track nonce usage
+      _trackNonce(nonceHex);
+      
+      return plaintext;
+      
+    } catch (e) {
+      throw CryptoException('Private message decryption failed: $e');
+    }
+  }
+  
+  Uint8List _generateNonce(DateTime timestamp) {
+    // 8 bytes timestamp + 4 bytes random
+    final timestampBytes = ByteData(8)
+      ..setUint64(0, timestamp.millisecondsSinceEpoch, Endian.big);
+    
+    final randomBytes = BitChatCrypto().generateSecureRandomBytes(4);
+    
+    return Uint8List.fromList([
       ...timestampBytes.buffer.asUint8List(),
       ...randomBytes,
     ]);
-    
-    // Additional authenticated data
-    final aad = Uint8List.fromList([
-      ...senderId,
-      ...recipientId,
-      0x01, // Private message type
-    ]);
-    
-    // Encrypt
-    final secretBox = await BitChatCrypto._aesGcm.encrypt(
-      plaintext,
-      secretKey: sessionKey,
-      nonce: nonce,
-      aad: aad,
-    );
-    
-    return EncryptedMessage(
-      ciphertext: secretBox.cipherText,
-      nonce: nonce,
-      tag: secretBox.mac.bytes,
-      aad: aad,
-    );
   }
   
-  static Future<Uint8List> decryptPrivateMessage(
-    EncryptedMessage encryptedMessage,
+  Uint8List _buildAAD(Uint8List senderId, Uint8List recipientId, MessageType type) {
+    return Uint8List.fromList([
+      ...senderId,
+      ...recipientId,
+      type.value, // Message type
+      0x01, // Version
+    ]);
+  }
+  
+  void _verifyMessageTimestamp(EncryptedMessage message) {
+    if (message.timestamp == null) return;
+    
+    final now = DateTime.now();
+    final age = now.difference(message.timestamp!);
+    
+    // Reject messages older than 5 minutes
+    if (age.inMinutes > 5) {
+      throw CryptoException('Message timestamp too old: ${age.inMinutes} minutes');
+    }
+    
+    // Reject messages from the future (allow 1 minute clock skew)
+    if (age.inMinutes < -1) {
+      throw CryptoException('Message timestamp from future: ${age.inMinutes} minutes');
+    }
+  }
+  
+  void _trackNonce(String nonceHex) {
+    _usedNonces.add(nonceHex);
+    
+    // Implement LRU behavior for nonce cache
+    if (_usedNonces.length > MAX_NONCE_CACHE) {
+      final oldestNonces = _usedNonces.take(_usedNonces.length - MAX_NONCE_CACHE);
+      _usedNonces.removeAll(oldestNonces);
+    }
+  }
+  
+  // Batch encryption for multiple messages
+  Future<List<EncryptedMessage>> encryptBatch(
+    List<MessageBatch> messages,
     SecretKey sessionKey,
   ) async {
-    final secretBox = SecretBox(
-      encryptedMessage.ciphertext,
-      nonce: encryptedMessage.nonce,
-      mac: Mac(encryptedMessage.tag),
-    );
+    final results = <EncryptedMessage>[];
     
-    return await BitChatCrypto._aesGcm.decrypt(
-      secretBox,
-      secretKey: sessionKey,
-      aad: encryptedMessage.aad,
-    );
+    for (final message in messages) {
+      final encrypted = await encryptPrivateMessage(
+        message.plaintext,
+        sessionKey,
+        message.senderId,
+        message.recipientId,
+        timestamp: message.timestamp,
+      );
+      results.add(encrypted);
+    }
+    
+    return results;
   }
+  
+  // Clear nonce cache for security
+  void clearNonceCache() {
+    _usedNonces.clear();
+  }
+  
+  // Get encryption statistics
+  Map<String, dynamic> getStats() {
+    return {
+      'usedNonces': _usedNonces.length,
+      'maxNonceCache': MAX_NONCE_CACHE,
+    };
+  }
+}
+
+// Message type enumeration
+enum MessageType {
+  privateMessage(0x01),
+  channelMessage(0x02),
+  systemMessage(0x03);
+  
+  const MessageType(this.value);
+  final int value;
+}
+
+// Batch message structure
+class MessageBatch {
+  final Uint8List plaintext;
+  final Uint8List senderId;
+  final Uint8List recipientId;
+  final DateTime? timestamp;
+  
+  const MessageBatch({
+    required this.plaintext,
+    required this.senderId,
+    required this.recipientId,
+    this.timestamp,
+  });
 }
 ```
 
@@ -198,40 +615,319 @@ class MessageAuthentication {
 
 ## Channel Encryption
 
-### Password-Based Key Derivation
+### Password-Based Key Derivation with Flutter Optimizations
 
-**Argon2id Implementation:**
+**Argon2id Implementation with Performance Tuning:**
 
 ```dart
 class ChannelCrypto {
-  static Future<SecretKey> deriveChannelKey(
+  static final ChannelCrypto _instance = ChannelCrypto._internal();
+  factory ChannelCrypto() => _instance;
+  ChannelCrypto._internal();
+  
+  // Cache for derived channel keys
+  final Map<String, SecretKey> _channelKeyCache = {};
+  final Map<String, DateTime> _keyDerivationTimes = {};
+  
+  // Platform-specific Argon2id parameters
+  late final Argon2idParameters _parameters;
+  
+  Future<void> initialize() async {
+    // Adjust parameters based on device capabilities
+    _parameters = await _determineOptimalParameters();
+    print('ChannelCrypto initialized with parameters: $_parameters');
+  }
+  
+  Future<Argon2idParameters> _determineOptimalParameters() async {
+    // Get device info for parameter tuning
+    final deviceInfo = DeviceInfoPlugin();
+    
+    if (Platform.isAndroid) {
+      final androidInfo = await deviceInfo.androidInfo;
+      return _getAndroidParameters(androidInfo);
+    } else if (Platform.isIOS) {
+      final iosInfo = await deviceInfo.iosInfo;
+      return _getIOSParameters(iosInfo);
+    } else {
+      return _getDefaultParameters();
+    }
+  }
+  
+  Argon2idParameters _getAndroidParameters(AndroidDeviceInfo info) {
+    // Adjust based on Android device capabilities
+    final totalMemoryMB = info.totalMemory ~/ (1024 * 1024);
+    
+    if (totalMemoryMB > 6000) {
+      // High-end device
+      return Argon2idParameters(
+        memory: 128 * 1024, // 128 MB
+        iterations: 4,
+        parallelism: 4,
+        hashLength: 32,
+      );
+    } else if (totalMemoryMB > 3000) {
+      // Mid-range device
+      return Argon2idParameters(
+        memory: 64 * 1024, // 64 MB
+        iterations: 3,
+        parallelism: 4,
+        hashLength: 32,
+      );
+    } else {
+      // Low-end device
+      return Argon2idParameters(
+        memory: 32 * 1024, // 32 MB
+        iterations: 2,
+        parallelism: 2,
+        hashLength: 32,
+      );
+    }
+  }
+  
+  Argon2idParameters _getIOSParameters(IosDeviceInfo info) {
+    // iOS devices generally have good performance
+    return Argon2idParameters(
+      memory: 64 * 1024, // 64 MB
+      iterations: 3,
+      parallelism: 4,
+      hashLength: 32,
+    );
+  }
+  
+  Argon2idParameters _getDefaultParameters() {
+    return Argon2idParameters(
+      memory: 64 * 1024, // 64 MB
+      iterations: 3,
+      parallelism: 4,
+      hashLength: 32,
+    );
+  }
+  
+  Future<SecretKey> deriveChannelKey(
+    String password,
+    String channelName,
+    Uint8List salt, {
+    bool useCache = true,
+  }) async {
+    // Input validation
+    if (password.isEmpty) {
+      throw CryptoException('Channel password cannot be empty');
+    }
+    if (channelName.isEmpty) {
+      throw CryptoException('Channel name cannot be empty');
+    }
+    if (salt.length < 16) {
+      throw CryptoException('Salt must be at least 16 bytes');
+    }
+    
+    // Create cache key
+    final cacheKey = _createChannelCacheKey(password, channelName, salt);
+    
+    // Check cache first
+    if (useCache && _channelKeyCache.containsKey(cacheKey)) {
+      return _channelKeyCache[cacheKey]!;
+    }
+    
+    try {
+      final stopwatch = Stopwatch()..start();
+      
+      final argon2id = Argon2id(
+        memory: _parameters.memory,
+        iterations: _parameters.iterations,
+        parallelism: _parameters.parallelism,
+        hashLength: _parameters.hashLength,
+      );
+      
+      final passwordBytes = utf8.encode(password);
+      final info = utf8.encode('BitChat-Channel-$channelName-v1');
+      
+      final secretKey = await argon2id.deriveKey(
+        secretKey: SecretKey(passwordBytes),
+        nonce: salt,
+        info: info,
+      );
+      
+      stopwatch.stop();
+      
+      // Log performance metrics
+      final derivationTime = stopwatch.elapsedMilliseconds;
+      _keyDerivationTimes[cacheKey] = DateTime.now();
+      
+      print('Channel key derivation took ${derivationTime}ms for $channelName');
+      
+      // Warn if derivation is too slow
+      if (derivationTime > 5000) {
+        print('Warning: Slow key derivation (${derivationTime}ms). Consider reducing Argon2id parameters.');
+      }
+      
+      // Cache the result
+      if (useCache) {
+        _channelKeyCache[cacheKey] = secretKey;
+      }
+      
+      return secretKey;
+      
+    } catch (e) {
+      throw CryptoException('Channel key derivation failed: $e');
+    }
+  }
+  
+  String _createChannelCacheKey(String password, String channelName, Uint8List salt) {
+    // Create a hash-based cache key (don't store actual password)
+    final combined = <int>[
+      ...utf8.encode(password),
+      ...utf8.encode(channelName),
+      ...salt,
+    ];
+    final hash = sha256.convert(combined);
+    return hash.toString();
+  }
+  
+  // Standard salt generation for channels
+  Uint8List generateChannelSalt(String channelName) {
+    final hash = sha256.convert(utf8.encode('BitChat-Salt-$channelName')).bytes;
+    return Uint8List.fromList(hash.take(16).toList()); // 128-bit salt
+  }
+  
+  // Generate random salt for new channels
+  Uint8List generateRandomSalt() {
+    return BitChatCrypto().generateSecureRandomBytes(16);
+  }
+  
+  // Derive multiple keys for channel operations
+  Future<ChannelKeys> deriveChannelKeys(
     String password,
     String channelName,
     Uint8List salt,
   ) async {
-    final argon2id = Argon2id(
-      memory: 64 * 1024, // 64 MB
-      iterations: 3,
-      parallelism: 4,
-      hashLength: 32, // 256 bits
+    final baseKey = await deriveChannelKey(password, channelName, salt);
+    
+    // Derive additional keys for different purposes
+    final sessionKeyDerivation = SessionKeyDerivation();
+    
+    final encryptionKey = await sessionKeyDerivation.deriveCustomKey(
+      baseKey,
+      salt,
+      'BitChat-Channel-Encryption-$channelName',
+      32,
     );
     
-    final passwordBytes = utf8.encode(password);
-    final info = utf8.encode('BitChat-Channel-$channelName-v1');
-    
-    final secretKey = await argon2id.deriveKey(
-      secretKey: SecretKey(passwordBytes),
-      nonce: salt,
-      info: info,
+    final authenticationKey = await sessionKeyDerivation.deriveCustomKey(
+      baseKey,
+      salt,
+      'BitChat-Channel-Authentication-$channelName',
+      32,
     );
     
-    return secretKey;
+    final metadataKey = await sessionKeyDerivation.deriveCustomKey(
+      baseKey,
+      salt,
+      'BitChat-Channel-Metadata-$channelName',
+      32,
+    );
+    
+    return ChannelKeys(
+      encryptionKey: encryptionKey,
+      authenticationKey: authenticationKey,
+      metadataKey: metadataKey,
+    );
   }
   
-  // Standard salt generation for channels
-  static Uint8List generateChannelSalt(String channelName) {
-    final hash = sha256.convert(utf8.encode('BitChat-Salt-$channelName')).bytes;
-    return Uint8List.fromList(hash.take(16).toList()); // 128-bit salt
+  // Verify channel password
+  Future<bool> verifyChannelPassword(
+    String password,
+    String channelName,
+    Uint8List salt,
+    Uint8List expectedKeyHash,
+  ) async {
+    try {
+      final derivedKey = await deriveChannelKey(password, channelName, salt, useCache: false);
+      final keyBytes = await derivedKey.extractBytes();
+      final keyHash = sha256.convert(keyBytes).bytes;
+      
+      return _constantTimeEquals(keyHash, expectedKeyHash);
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  bool _constantTimeEquals(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    
+    int result = 0;
+    for (int i = 0; i < a.length; i++) {
+      result |= a[i] ^ b[i];
+    }
+    
+    return result == 0;
+  }
+  
+  // Clear cache for security
+  void clearCache() {
+    _channelKeyCache.clear();
+    _keyDerivationTimes.clear();
+  }
+  
+  // Get performance statistics
+  Map<String, dynamic> getStats() {
+    return {
+      'cachedKeys': _channelKeyCache.length,
+      'parameters': _parameters.toMap(),
+      'averageDerivationTime': _calculateAverageDerivationTime(),
+    };
+  }
+  
+  double _calculateAverageDerivationTime() {
+    if (_keyDerivationTimes.isEmpty) return 0.0;
+    
+    final now = DateTime.now();
+    final recentTimes = _keyDerivationTimes.values
+        .where((time) => now.difference(time).inMinutes < 10)
+        .length;
+    
+    return recentTimes.toDouble();
+  }
+}
+
+// Channel key structure
+class ChannelKeys {
+  final SecretKey encryptionKey;
+  final SecretKey authenticationKey;
+  final SecretKey metadataKey;
+  
+  const ChannelKeys({
+    required this.encryptionKey,
+    required this.authenticationKey,
+    required this.metadataKey,
+  });
+}
+
+// Argon2id parameters
+class Argon2idParameters {
+  final int memory;
+  final int iterations;
+  final int parallelism;
+  final int hashLength;
+  
+  const Argon2idParameters({
+    required this.memory,
+    required this.iterations,
+    required this.parallelism,
+    required this.hashLength,
+  });
+  
+  Map<String, dynamic> toMap() {
+    return {
+      'memory': memory,
+      'iterations': iterations,
+      'parallelism': parallelism,
+      'hashLength': hashLength,
+    };
+  }
+  
+  @override
+  String toString() {
+    return 'Argon2idParameters(memory: ${memory}KB, iterations: $iterations, parallelism: $parallelism, hashLength: $hashLength)';
   }
 }
 ```
@@ -576,11 +1272,16 @@ class HardwareAcceleration {
 }
 ```
 
-## Testing Strategy
+## Flutter-Specific Testing Strategy
 
-### Cryptographic Test Vectors
+### Comprehensive Cryptographic Test Suite
 
 ```dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:crypto/crypto.dart';
+import 'package:convert/convert.dart';
+
 class CryptoTestVectors {
   static const Map<String, dynamic> privateMessageTest = {
     'private_key': 'a546e36bf0527c9d3b16154b82465edd62144c0ac1fc5a18506a2244ba449ac4',
@@ -599,41 +1300,425 @@ class CryptoTestVectors {
     'message': 'Channel message test',
     'expected_key': 'b5e5a3c2d9f8e7b6a5c4d3e2f1a0b9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2',
   };
+  
+  // Additional test vectors for edge cases
+  static const Map<String, dynamic> edgeCaseTests = {
+    'empty_message': '',
+    'large_message': 'A' * 10000,
+    'unicode_message': '🔒 Secure message with emojis 🚀',
+    'binary_message': [0x00, 0x01, 0x02, 0xFF, 0xFE, 0xFD],
+  };
 }
 
-// Test implementation
-class CryptoTests {
-  static Future<void> testPrivateMessageEncryption() async {
-    final testVector = CryptoTestVectors.privateMessageTest;
+// Comprehensive test implementation
+class FlutterCryptoTests {
+  group('BitChatCrypto Initialization', () {
+    test('should initialize successfully', () async {
+      final crypto = BitChatCrypto();
+      await crypto.initialize();
+      
+      // Verify initialization completed
+      expect(crypto, isNotNull);
+    });
     
-    // Load test keys
-    final privateKey = hex.decode(testVector['private_key']);
-    final publicKey = hex.decode(testVector['public_key']);
+    test('should generate secure random bytes', () {
+      final crypto = BitChatCrypto();
+      final bytes1 = crypto.generateSecureRandomBytes(32);
+      final bytes2 = crypto.generateSecureRandomBytes(32);
+      
+      expect(bytes1.length, equals(32));
+      expect(bytes2.length, equals(32));
+      expect(bytes1, isNot(equals(bytes2))); // Should be different
+    });
+  });
+  
+  group('Private Message Encryption', () {
+    late MessageEncryption messageEncryption;
     
-    // Perform encryption
-    final message = utf8.encode(testVector['message']);
-    final nonce = hex.decode(testVector['nonce']);
+    setUp(() {
+      messageEncryption = MessageEncryption();
+    });
     
-    // Verify encryption matches expected output
-    // Implementation...
+    test('should encrypt and decrypt private message correctly', () async {
+      // Arrange
+      final plaintext = utf8.encode('Test message');
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      final senderId = Uint8List.fromList([1, 2, 3, 4]);
+      final recipientId = Uint8List.fromList([5, 6, 7, 8]);
+      
+      // Act
+      final encrypted = await messageEncryption.encryptPrivateMessage(
+        plaintext,
+        sessionKey,
+        senderId,
+        recipientId,
+      );
+      
+      final decrypted = await messageEncryption.decryptPrivateMessage(
+        encrypted,
+        sessionKey,
+      );
+      
+      // Assert
+      expect(decrypted, equals(plaintext));
+      expect(encrypted.nonce.length, equals(12));
+      expect(encrypted.tag.length, equals(16));
+    });
+    
+    test('should handle empty message', () async {
+      final plaintext = Uint8List(0);
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      final senderId = Uint8List.fromList([1, 2, 3, 4]);
+      final recipientId = Uint8List.fromList([5, 6, 7, 8]);
+      
+      expect(
+        () => messageEncryption.encryptPrivateMessage(
+          plaintext,
+          sessionKey,
+          senderId,
+          recipientId,
+        ),
+        throwsA(isA<CryptoException>()),
+      );
+    });
+    
+    test('should handle large messages', () async {
+      final plaintext = utf8.encode('A' * 10000);
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      final senderId = Uint8List.fromList([1, 2, 3, 4]);
+      final recipientId = Uint8List.fromList([5, 6, 7, 8]);
+      
+      final encrypted = await messageEncryption.encryptPrivateMessage(
+        plaintext,
+        sessionKey,
+        senderId,
+        recipientId,
+      );
+      
+      final decrypted = await messageEncryption.decryptPrivateMessage(
+        encrypted,
+        sessionKey,
+      );
+      
+      expect(decrypted, equals(plaintext));
+    });
+    
+    test('should detect replay attacks', () async {
+      final plaintext = utf8.encode('Test message');
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      final senderId = Uint8List.fromList([1, 2, 3, 4]);
+      final recipientId = Uint8List.fromList([5, 6, 7, 8]);
+      
+      final encrypted = await messageEncryption.encryptPrivateMessage(
+        plaintext,
+        sessionKey,
+        senderId,
+        recipientId,
+      );
+      
+      // First decryption should succeed
+      await messageEncryption.decryptPrivateMessage(encrypted, sessionKey);
+      
+      // Second decryption should fail (replay)
+      expect(
+        () => messageEncryption.decryptPrivateMessage(encrypted, sessionKey),
+        throwsA(isA<CryptoException>()),
+      );
+    });
+    
+    test('should validate timestamp window', () async {
+      final plaintext = utf8.encode('Test message');
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      final senderId = Uint8List.fromList([1, 2, 3, 4]);
+      final recipientId = Uint8List.fromList([5, 6, 7, 8]);
+      
+      // Create message with old timestamp
+      final oldTimestamp = DateTime.now().subtract(Duration(minutes: 10));
+      
+      final encrypted = await messageEncryption.encryptPrivateMessage(
+        plaintext,
+        sessionKey,
+        senderId,
+        recipientId,
+        timestamp: oldTimestamp,
+      );
+      
+      // Should fail due to old timestamp
+      expect(
+        () => messageEncryption.decryptPrivateMessage(encrypted, sessionKey),
+        throwsA(isA<CryptoException>()),
+      );
+    });
+  });
+  
+  group('Channel Encryption', () {
+    late ChannelCrypto channelCrypto;
+    
+    setUp(() async {
+      channelCrypto = ChannelCrypto();
+      await channelCrypto.initialize();
+    });
+    
+    test('should derive channel key correctly', () async {
+      final password = 'test_password';
+      final channelName = 'general';
+      final salt = channelCrypto.generateChannelSalt(channelName);
+      
+      final key1 = await channelCrypto.deriveChannelKey(password, channelName, salt);
+      final key2 = await channelCrypto.deriveChannelKey(password, channelName, salt);
+      
+      // Keys should be identical for same inputs
+      final key1Bytes = await key1.extractBytes();
+      final key2Bytes = await key2.extractBytes();
+      expect(key1Bytes, equals(key2Bytes));
+    });
+    
+    test('should use cache for performance', () async {
+      final password = 'test_password';
+      final channelName = 'general';
+      final salt = channelCrypto.generateChannelSalt(channelName);
+      
+      final stopwatch = Stopwatch()..start();
+      
+      // First derivation (should be slow)
+      await channelCrypto.deriveChannelKey(password, channelName, salt);
+      final firstTime = stopwatch.elapsedMilliseconds;
+      
+      stopwatch.reset();
+      
+      // Second derivation (should be fast due to cache)
+      await channelCrypto.deriveChannelKey(password, channelName, salt);
+      final secondTime = stopwatch.elapsedMilliseconds;
+      
+      expect(secondTime, lessThan(firstTime));
+    });
+    
+    test('should verify channel password correctly', () async {
+      final password = 'correct_password';
+      final wrongPassword = 'wrong_password';
+      final channelName = 'general';
+      final salt = channelCrypto.generateChannelSalt(channelName);
+      
+      // Generate expected key hash
+      final key = await channelCrypto.deriveChannelKey(password, channelName, salt);
+      final keyBytes = await key.extractBytes();
+      final expectedHash = sha256.convert(keyBytes).bytes;
+      
+      // Verify correct password
+      final isCorrect = await channelCrypto.verifyChannelPassword(
+        password,
+        channelName,
+        salt,
+        Uint8List.fromList(expectedHash),
+      );
+      expect(isCorrect, isTrue);
+      
+      // Verify wrong password
+      final isWrong = await channelCrypto.verifyChannelPassword(
+        wrongPassword,
+        channelName,
+        salt,
+        Uint8List.fromList(expectedHash),
+      );
+      expect(isWrong, isFalse);
+    });
+    
+    test('should derive multiple channel keys', () async {
+      final password = 'test_password';
+      final channelName = 'general';
+      final salt = channelCrypto.generateChannelSalt(channelName);
+      
+      final channelKeys = await channelCrypto.deriveChannelKeys(
+        password,
+        channelName,
+        salt,
+      );
+      
+      expect(channelKeys.encryptionKey, isNotNull);
+      expect(channelKeys.authenticationKey, isNotNull);
+      expect(channelKeys.metadataKey, isNotNull);
+      
+      // Keys should be different
+      final encBytes = await channelKeys.encryptionKey.extractBytes();
+      final authBytes = await channelKeys.authenticationKey.extractBytes();
+      final metaBytes = await channelKeys.metadataKey.extractBytes();
+      
+      expect(encBytes, isNot(equals(authBytes)));
+      expect(encBytes, isNot(equals(metaBytes)));
+      expect(authBytes, isNot(equals(metaBytes)));
+    });
+  });
+  
+  group('Session Key Derivation', () {
+    late SessionKeyDerivation sessionKeyDerivation;
+    
+    setUp(() {
+      sessionKeyDerivation = SessionKeyDerivation();
+    });
+    
+    test('should derive session key correctly', () async {
+      final sharedSecret = SecretKey(List.generate(32, (i) => i));
+      final salt = Uint8List.fromList(List.generate(16, (i) => i + 16));
+      final info = 'test-info';
+      
+      final key1 = await sessionKeyDerivation.deriveSessionKey(sharedSecret, salt, info);
+      final key2 = await sessionKeyDerivation.deriveSessionKey(sharedSecret, salt, info);
+      
+      final key1Bytes = await key1.extractBytes();
+      final key2Bytes = await key2.extractBytes();
+      expect(key1Bytes, equals(key2Bytes));
+    });
+    
+    test('should derive different keys for different info', () async {
+      final sharedSecret = SecretKey(List.generate(32, (i) => i));
+      final salt = Uint8List.fromList(List.generate(16, (i) => i + 16));
+      
+      final key1 = await sessionKeyDerivation.deriveSessionKey(sharedSecret, salt, 'info1');
+      final key2 = await sessionKeyDerivation.deriveSessionKey(sharedSecret, salt, 'info2');
+      
+      final key1Bytes = await key1.extractBytes();
+      final key2Bytes = await key2.extractBytes();
+      expect(key1Bytes, isNot(equals(key2Bytes)));
+    });
+    
+    test('should derive multiple keys efficiently', () async {
+      final sharedSecret = SecretKey(List.generate(32, (i) => i));
+      final salt = Uint8List.fromList(List.generate(16, (i) => i + 16));
+      final keyInfos = {
+        'encryption': 'BitChat-Encryption-v1',
+        'authentication': 'BitChat-Authentication-v1',
+        'metadata': 'BitChat-Metadata-v1',
+      };
+      
+      final keys = await sessionKeyDerivation.deriveMultipleKeys(
+        sharedSecret,
+        salt,
+        keyInfos,
+      );
+      
+      expect(keys.length, equals(3));
+      expect(keys.containsKey('encryption'), isTrue);
+      expect(keys.containsKey('authentication'), isTrue);
+      expect(keys.containsKey('metadata'), isTrue);
+    });
+  });
+  
+  group('Performance Tests', () {
+    test('encryption performance should be acceptable', () async {
+      final messageEncryption = MessageEncryption();
+      final plaintext = utf8.encode('Performance test message');
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      final senderId = Uint8List.fromList([1, 2, 3, 4]);
+      final recipientId = Uint8List.fromList([5, 6, 7, 8]);
+      
+      final stopwatch = Stopwatch()..start();
+      
+      // Perform 100 encryptions
+      for (int i = 0; i < 100; i++) {
+        await messageEncryption.encryptPrivateMessage(
+          plaintext,
+          sessionKey,
+          senderId,
+          recipientId,
+        );
+      }
+      
+      stopwatch.stop();
+      
+      final avgTime = stopwatch.elapsedMilliseconds / 100;
+      expect(avgTime, lessThan(10)); // Should be less than 10ms per encryption
+    });
+    
+    test('key derivation performance should be reasonable', () async {
+      final channelCrypto = ChannelCrypto();
+      await channelCrypto.initialize();
+      
+      final password = 'test_password';
+      final channelName = 'performance_test';
+      final salt = channelCrypto.generateChannelSalt(channelName);
+      
+      final stopwatch = Stopwatch()..start();
+      
+      await channelCrypto.deriveChannelKey(password, channelName, salt, useCache: false);
+      
+      stopwatch.stop();
+      
+      // Key derivation should complete within reasonable time
+      expect(stopwatch.elapsedMilliseconds, lessThan(5000)); // 5 seconds max
+    });
+  });
+  
+  group('Error Handling', () {
+    test('should handle invalid input gracefully', () async {
+      final messageEncryption = MessageEncryption();
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      
+      // Test invalid sender ID
+      expect(
+        () => messageEncryption.encryptPrivateMessage(
+          utf8.encode('test'),
+          sessionKey,
+          Uint8List.fromList([1, 2, 3]), // Invalid length
+          Uint8List.fromList([5, 6, 7, 8]),
+        ),
+        throwsA(isA<CryptoException>()),
+      );
+    });
+    
+    test('should handle corrupted ciphertext', () async {
+      final messageEncryption = MessageEncryption();
+      final sessionKey = SecretKey(List.generate(32, (i) => i));
+      
+      // Create valid encrypted message
+      final encrypted = await messageEncryption.encryptPrivateMessage(
+        utf8.encode('test'),
+        sessionKey,
+        Uint8List.fromList([1, 2, 3, 4]),
+        Uint8List.fromList([5, 6, 7, 8]),
+      );
+      
+      // Corrupt the ciphertext
+      encrypted.ciphertext[0] ^= 0xFF;
+      
+      // Decryption should fail
+      expect(
+        () => messageEncryption.decryptPrivateMessage(encrypted, sessionKey),
+        throwsA(isA<CryptoException>()),
+      );
+    });
+  });
+  
+  tearDown(() {
+    // Clean up after each test
+    MessageEncryption().clearNonceCache();
+    ChannelCrypto().clearCache();
+    SessionKeyDerivation().clearCache();
+  });
+}
+
+// Mock implementations for testing
+class MockCryptoService {
+  static void setupMocks() {
+    // Setup mock implementations for testing
+    // This would include mocking platform-specific crypto operations
+  }
+}
+
+// Test utilities
+class CryptoTestUtils {
+  static Uint8List generateTestVector(int length) {
+    return Uint8List.fromList(List.generate(length, (i) => i % 256));
   }
   
-  static Future<void> testChannelKeyDerivation() async {
-    final testVector = CryptoTestVectors.channelMessageTest;
+  static bool constantTimeEquals(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
     
-    // Derive key with test parameters
-    final password = testVector['password'];
-    final channel = testVector['channel'];
-    final salt = hex.decode(testVector['salt']);
+    int result = 0;
+    for (int i = 0; i < a.length; i++) {
+      result |= a[i] ^ b[i];
+    }
     
-    final derivedKey = await ChannelCrypto.deriveChannelKey(
-      password,
-      channel,
-      salt,
-    );
-    
-    // Verify key matches expected value
-    // Implementation...
+    return result == 0;
   }
 }
 ```
@@ -679,48 +1764,408 @@ class SecureMemory {
 
 ## Platform Considerations
 
-### iOS Integration
+### iOS Integration with Flutter
 
 ```dart
-// iOS-specific crypto optimizations
+// iOS-specific crypto optimizations with Flutter integration
 class IOSCrypto {
-  static bool get hasSecureEnclave {
-    // Check for iPhone 5s+ with Secure Enclave
-    return Platform.isIOS; // Simplified check
+  static const MethodChannel _channel = MethodChannel('bitchat/ios_crypto');
+  
+  static Future<bool> get hasSecureEnclave async {
+    try {
+      return await _channel.invokeMethod('hasSecureEnclave') ?? false;
+    } catch (e) {
+      print('Failed to check Secure Enclave availability: $e');
+      return false;
+    }
   }
   
   static Future<void> configureForIOS() async {
-    if (hasSecureEnclave) {
-      // Configure hardware-backed key storage
-      await _configureSecureEnclave();
+    if (Platform.isIOS) {
+      final hasSecureEnclave = await IOSCrypto.hasSecureEnclave;
+      
+      if (hasSecureEnclave) {
+        await _configureSecureEnclave();
+      } else {
+        await _configureKeychainStorage();
+      }
     }
   }
   
   static Future<void> _configureSecureEnclave() async {
-    // Implementation for Secure Enclave integration
+    try {
+      await _channel.invokeMethod('configureSecureEnclave', {
+        'keySize': 256,
+        'keyType': 'ellipticCurve',
+        'accessControl': 'biometryAny',
+      });
+      
+      print('Secure Enclave configured successfully');
+    } catch (e) {
+      print('Failed to configure Secure Enclave: $e');
+      // Fallback to keychain
+      await _configureKeychainStorage();
+    }
+  }
+  
+  static Future<void> _configureKeychainStorage() async {
+    try {
+      await _channel.invokeMethod('configureKeychain', {
+        'service': 'com.bitchat.keys',
+        'accessGroup': 'group.com.bitchat.shared',
+        'accessibility': 'kSecAttrAccessibleWhenUnlockedThisDeviceOnly',
+      });
+      
+      print('Keychain storage configured successfully');
+    } catch (e) {
+      print('Failed to configure Keychain storage: $e');
+    }
+  }
+  
+  // Store key in iOS Secure Enclave or Keychain
+  static Future<void> storeSecureKey(String keyId, Uint8List keyData) async {
+    try {
+      await _channel.invokeMethod('storeKey', {
+        'keyId': keyId,
+        'keyData': keyData,
+        'useSecureEnclave': await hasSecureEnclave,
+      });
+    } catch (e) {
+      throw CryptoException('Failed to store key in iOS secure storage: $e');
+    }
+  }
+  
+  // Retrieve key from iOS secure storage
+  static Future<Uint8List?> retrieveSecureKey(String keyId) async {
+    try {
+      final result = await _channel.invokeMethod('retrieveKey', {
+        'keyId': keyId,
+      });
+      
+      return result != null ? Uint8List.fromList(List<int>.from(result)) : null;
+    } catch (e) {
+      print('Failed to retrieve key from iOS secure storage: $e');
+      return null;
+    }
+  }
+  
+  // Delete key from iOS secure storage
+  static Future<void> deleteSecureKey(String keyId) async {
+    try {
+      await _channel.invokeMethod('deleteKey', {
+        'keyId': keyId,
+      });
+    } catch (e) {
+      print('Failed to delete key from iOS secure storage: $e');
+    }
+  }
+  
+  // Generate key pair in Secure Enclave
+  static Future<Map<String, Uint8List>?> generateSecureKeyPair(String keyId) async {
+    if (!await hasSecureEnclave) {
+      return null;
+    }
+    
+    try {
+      final result = await _channel.invokeMethod('generateKeyPair', {
+        'keyId': keyId,
+        'keyType': 'ellipticCurve',
+        'keySize': 256,
+      });
+      
+      if (result != null) {
+        return {
+          'publicKey': Uint8List.fromList(List<int>.from(result['publicKey'])),
+          'privateKeyRef': Uint8List.fromList(List<int>.from(result['privateKeyRef'])),
+        };
+      }
+      
+      return null;
+    } catch (e) {
+      throw CryptoException('Failed to generate key pair in Secure Enclave: $e');
+    }
   }
 }
 ```
 
-### Android Integration
+### Android Integration with Flutter
 
 ```dart
-// Android-specific crypto optimizations
+// Android-specific crypto optimizations with Flutter integration
 class AndroidCrypto {
-  static bool get hasHardwareKeystore {
-    // Check for Android 6.0+ with hardware keystore
-    return Platform.isAndroid; // Simplified check
+  static const MethodChannel _channel = MethodChannel('bitchat/android_crypto');
+  
+  static Future<bool> get hasHardwareKeystore async {
+    try {
+      return await _channel.invokeMethod('hasHardwareKeystore') ?? false;
+    } catch (e) {
+      print('Failed to check hardware keystore availability: $e');
+      return false;
+    }
+  }
+  
+  static Future<int> get androidApiLevel async {
+    try {
+      return await _channel.invokeMethod('getApiLevel') ?? 0;
+    } catch (e) {
+      print('Failed to get Android API level: $e');
+      return 0;
+    }
   }
   
   static Future<void> configureForAndroid() async {
-    if (hasHardwareKeystore) {
-      // Configure hardware-backed key storage
-      await _configureHardwareKeystore();
+    if (Platform.isAndroid) {
+      final hasHardwareKeystore = await AndroidCrypto.hasHardwareKeystore;
+      final apiLevel = await AndroidCrypto.androidApiLevel;
+      
+      if (hasHardwareKeystore && apiLevel >= 23) {
+        await _configureHardwareKeystore();
+      } else {
+        await _configureEncryptedSharedPreferences();
+      }
     }
   }
   
   static Future<void> _configureHardwareKeystore() async {
-    // Implementation for Android hardware keystore
+    try {
+      await _channel.invokeMethod('configureHardwareKeystore', {
+        'keyAlias': 'bitchat_master_key',
+        'keySize': 256,
+        'keyAlgorithm': 'AES',
+        'blockMode': 'GCM',
+        'encryptionPadding': 'NoPadding',
+        'userAuthenticationRequired': false,
+        'invalidatedByBiometricEnrollment': false,
+      });
+      
+      print('Android Hardware Keystore configured successfully');
+    } catch (e) {
+      print('Failed to configure Hardware Keystore: $e');
+      // Fallback to encrypted shared preferences
+      await _configureEncryptedSharedPreferences();
+    }
+  }
+  
+  static Future<void> _configureEncryptedSharedPreferences() async {
+    try {
+      await _channel.invokeMethod('configureEncryptedPreferences', {
+        'fileName': 'bitchat_secure_prefs',
+        'masterKeyAlias': 'bitchat_master_key_alias',
+        'prefKeyEncryptionScheme': 'AES256_SIV',
+        'prefValueEncryptionScheme': 'AES256_GCM',
+      });
+      
+      print('Encrypted SharedPreferences configured successfully');
+    } catch (e) {
+      print('Failed to configure Encrypted SharedPreferences: $e');
+    }
+  }
+  
+  // Store key in Android secure storage
+  static Future<void> storeSecureKey(String keyId, Uint8List keyData) async {
+    try {
+      await _channel.invokeMethod('storeKey', {
+        'keyId': keyId,
+        'keyData': keyData,
+        'useHardwareKeystore': await hasHardwareKeystore,
+      });
+    } catch (e) {
+      throw CryptoException('Failed to store key in Android secure storage: $e');
+    }
+  }
+  
+  // Retrieve key from Android secure storage
+  static Future<Uint8List?> retrieveSecureKey(String keyId) async {
+    try {
+      final result = await _channel.invokeMethod('retrieveKey', {
+        'keyId': keyId,
+      });
+      
+      return result != null ? Uint8List.fromList(List<int>.from(result)) : null;
+    } catch (e) {
+      print('Failed to retrieve key from Android secure storage: $e');
+      return null;
+    }
+  }
+  
+  // Delete key from Android secure storage
+  static Future<void> deleteSecureKey(String keyId) async {
+    try {
+      await _channel.invokeMethod('deleteKey', {
+        'keyId': keyId,
+      });
+    } catch (e) {
+      print('Failed to delete key from Android secure storage: $e');
+    }
+  }
+  
+  // Generate key in Hardware Keystore
+  static Future<String?> generateHardwareKey(String keyAlias) async {
+    if (!await hasHardwareKeystore) {
+      return null;
+    }
+    
+    try {
+      final result = await _channel.invokeMethod('generateHardwareKey', {
+        'keyAlias': keyAlias,
+        'keySize': 256,
+        'keyAlgorithm': 'AES',
+      });
+      
+      return result as String?;
+    } catch (e) {
+      throw CryptoException('Failed to generate key in Hardware Keystore: $e');
+    }
+  }
+  
+  // Encrypt data using Hardware Keystore key
+  static Future<Uint8List?> encryptWithHardwareKey(
+    String keyAlias,
+    Uint8List plaintext,
+  ) async {
+    try {
+      final result = await _channel.invokeMethod('encryptWithHardwareKey', {
+        'keyAlias': keyAlias,
+        'plaintext': plaintext,
+      });
+      
+      return result != null ? Uint8List.fromList(List<int>.from(result)) : null;
+    } catch (e) {
+      throw CryptoException('Failed to encrypt with hardware key: $e');
+    }
+  }
+  
+  // Decrypt data using Hardware Keystore key
+  static Future<Uint8List?> decryptWithHardwareKey(
+    String keyAlias,
+    Uint8List ciphertext,
+  ) async {
+    try {
+      final result = await _channel.invokeMethod('decryptWithHardwareKey', {
+        'keyAlias': keyAlias,
+        'ciphertext': ciphertext,
+      });
+      
+      return result != null ? Uint8List.fromList(List<int>.from(result)) : null;
+    } catch (e) {
+      throw CryptoException('Failed to decrypt with hardware key: $e');
+    }
+  }
+}
+```
+
+### Cross-Platform Secure Storage Manager
+
+```dart
+// Unified secure storage interface for Flutter
+class SecureStorageManager {
+  static final SecureStorageManager _instance = SecureStorageManager._internal();
+  factory SecureStorageManager() => _instance;
+  SecureStorageManager._internal();
+  
+  bool _isInitialized = false;
+  
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+    
+    try {
+      if (Platform.isIOS) {
+        await IOSCrypto.configureForIOS();
+      } else if (Platform.isAndroid) {
+        await AndroidCrypto.configureForAndroid();
+      }
+      
+      _isInitialized = true;
+      print('SecureStorageManager initialized successfully');
+    } catch (e) {
+      print('Failed to initialize SecureStorageManager: $e');
+      rethrow;
+    }
+  }
+  
+  Future<void> storeKey(String keyId, Uint8List keyData) async {
+    if (!_isInitialized) {
+      throw StateError('SecureStorageManager not initialized');
+    }
+    
+    try {
+      if (Platform.isIOS) {
+        await IOSCrypto.storeSecureKey(keyId, keyData);
+      } else if (Platform.isAndroid) {
+        await AndroidCrypto.storeSecureKey(keyId, keyData);
+      } else {
+        // Fallback for other platforms
+        await _storeKeyFallback(keyId, keyData);
+      }
+    } catch (e) {
+      throw CryptoException('Failed to store key: $e');
+    }
+  }
+  
+  Future<Uint8List?> retrieveKey(String keyId) async {
+    if (!_isInitialized) {
+      throw StateError('SecureStorageManager not initialized');
+    }
+    
+    try {
+      if (Platform.isIOS) {
+        return await IOSCrypto.retrieveSecureKey(keyId);
+      } else if (Platform.isAndroid) {
+        return await AndroidCrypto.retrieveSecureKey(keyId);
+      } else {
+        // Fallback for other platforms
+        return await _retrieveKeyFallback(keyId);
+      }
+    } catch (e) {
+      print('Failed to retrieve key: $e');
+      return null;
+    }
+  }
+  
+  Future<void> deleteKey(String keyId) async {
+    if (!_isInitialized) {
+      throw StateError('SecureStorageManager not initialized');
+    }
+    
+    try {
+      if (Platform.isIOS) {
+        await IOSCrypto.deleteSecureKey(keyId);
+      } else if (Platform.isAndroid) {
+        await AndroidCrypto.deleteSecureKey(keyId);
+      } else {
+        // Fallback for other platforms
+        await _deleteKeyFallback(keyId);
+      }
+    } catch (e) {
+      print('Failed to delete key: $e');
+    }
+  }
+  
+  Future<bool> get hasHardwareSupport async {
+    if (Platform.isIOS) {
+      return await IOSCrypto.hasSecureEnclave;
+    } else if (Platform.isAndroid) {
+      return await AndroidCrypto.hasHardwareKeystore;
+    }
+    return false;
+  }
+  
+  // Fallback implementations for unsupported platforms
+  Future<void> _storeKeyFallback(String keyId, Uint8List keyData) async {
+    // Use flutter_secure_storage as fallback
+    const storage = FlutterSecureStorage();
+    await storage.write(key: keyId, value: base64.encode(keyData));
+  }
+  
+  Future<Uint8List?> _retrieveKeyFallback(String keyId) async {
+    const storage = FlutterSecureStorage();
+    final encoded = await storage.read(key: keyId);
+    return encoded != null ? base64.decode(encoded) : null;
+  }
+  
+  Future<void> _deleteKeyFallback(String keyId) async {
+    const storage = FlutterSecureStorage();
+    await storage.delete(key: keyId);
   }
 }
 ```

@@ -1,414 +1,784 @@
 # BitChat Flutter - Technical Specifications
 
-**Version:** 0.1.0  
-**Last Updated:** July 11, 2025
+## Introduction
 
-## System Overview
+This document consolidates technical constraints and requirements from the existing BitChat documentation suite, providing Flutter-specific technical specifications and architectural decisions. The specifications ensure compatibility with iOS and Android implementations while leveraging Flutter's cross-platform capabilities and Dart's modern language features.
 
-BitChat Flutter is a decentralized peer-to-peer messaging application operating over Bluetooth Low Energy (BLE) mesh networks. This document provides detailed technical specifications for developers implementing, maintaining, or integrating with the BitChat Flutter application.
+## Technology Stack
 
-## Development Environment
+### Core Framework
+- **Flutter SDK**: Latest stable version (3.16+) for cross-platform development
+- **Dart Language**: 3.2+ with null safety and modern language features
+- **Target Platforms**: iOS 14.0+, Android API 26+, macOS 11.0+, Windows 10+, Linux Ubuntu 20.04+
 
-| Component | Specification | Version |
-|-----------|--------------|---------|
-| Flutter SDK | Latest stable | 3.16.0+ |
-| Dart SDK | Latest stable | 3.2.0+ |
-| Android SDK | API Level | 34 (Android 14) |
-| Android Min SDK | API Level | 26 (Android 8.0) |
-| iOS SDK | Target | iOS 16.0+ |
-| iOS Min Version | Minimum | iOS 14.0 |
-| IDE | Recommended | VS Code / Android Studio |
-
-## Core Libraries
-
-### Required Flutter Packages
-
+### Key Dependencies
 ```yaml
 dependencies:
-  flutter:
-    sdk: flutter
-  
-  # State Management
-  provider: ^6.1.1
-  riverpod: ^2.4.9
-  
-  # Bluetooth
-  flutter_blue_plus: ^1.31.7
-  
-  # Encryption
-  crypto: ^3.0.3
-  cryptography: ^2.7.0
-  
-  # Storage
-  hive: ^2.2.3
-  hive_flutter: ^1.1.0
-  path_provider: ^2.1.2
-  
-  # UI
-  material_color_utilities: ^0.8.0
-  google_fonts: ^6.1.0
-  
-  # Utils
-  uuid: ^4.2.1
-  convert: ^3.1.1
-  
-  # Compression
-  archive: ^3.4.9
-  
-  # Permissions
-  permission_handler: ^11.2.0
-```
+  flutter_blue_plus: ^1.35.5      # Bluetooth Low Energy operations
+  cryptography: ^2.7.0            # X25519, AES-256-GCM, Ed25519 implementations
+  hive: ^2.2.3                    # Local storage and persistence
+  hive_flutter: ^1.1.0            # Flutter integration for Hive
+  provider: ^6.1.1                # State management
+  permission_handler: ^12.0.1     # Platform permissions
+  device_info_plus: ^9.1.0        # Device information
+  battery_plus: ^4.0.2            # Battery monitoring
+  crypto: ^3.0.3                  # Additional cryptographic utilities
+  convert: ^3.1.1                 # Data conversion utilities
+  collection: ^1.18.0             # Enhanced collections
 
-### Dev Dependencies
-
-```yaml
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  mocktail: ^0.3.0                # Mocking for tests
   integration_test:
     sdk: flutter
-  mocktail: ^1.0.2
-  build_runner: ^2.4.7
-  hive_generator: ^2.0.1
+  build_runner: ^2.4.7            # Code generation
+  hive_generator: ^2.0.1          # Hive type adapters
+  json_annotation: ^4.8.1         # JSON serialization
 ```
 
-## Hardware Requirements
+### Architecture Pattern
+- **Clean Architecture**: Clear separation of concerns across layers
+- **Layer Structure**: Presentation → Application → Domain → Infrastructure → Platform
+- **State Management**: Provider pattern with ChangeNotifier for reactive UI updates
+- **Dependency Injection**: Service locator pattern with GetIt for dependency management
 
-### Device Requirements
+## System Architecture
 
-| Feature | Minimum Requirement | Recommended |
-|---------|---------------------|-------------|
-| Bluetooth | BLE 4.2 support | BLE 5.0+ |
-| Memory | 2GB RAM | 4GB+ RAM |
-| Storage | 100MB free | 500MB free |
-| Display | Any | 4.7" or larger |
-| Processor | Any | Mid-range or better |
-
-### Platform Specifics
-
-**Android:**
-- Bluetooth permissions
-- Location permissions (required for BLE scanning on Android)
-- Foreground service capability
-- Notification permissions
-
-**iOS:**
-- Bluetooth permissions
-- Background modes for Bluetooth
-- Local notification permissions
-
-## Network Specifications
-
-### Bluetooth Low Energy
-
-| Parameter | Value | Notes |
-|-----------|-------|-------|
-| Service UUID | F47B5E2D-4A9E-4C5A-9B3F-8E1D2C3A4B5C | Primary service |
-| TX Characteristic | A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D | Write |
-| RX Characteristic | A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D | Notify |
-| MTU Size | 512 bytes | Negotiated on connection |
-| Connection Interval | 20ms - 40ms | Platform dependent |
-| Supervision Timeout | 4000ms | Default |
-| Slave Latency | 0 | Default |
-
-### Scanning Parameters
-
-| Power Mode | Scan Duration | Scan Interval | Max Connections | Advertising Interval |
-|------------|---------------|---------------|-----------------|----------------------|
-| Performance | 3 seconds | 2 seconds | 20 | 500ms (continuous) |
-| Balanced | 2 seconds | 3 seconds | 10 | 5 seconds |
-| Power Saver | 1 second | 8 seconds | 5 | 15 seconds |
-| Ultra Low Power | 0.5 seconds | 20 seconds | 2 | 30 seconds |
-
-### WiFi Direct (Planned for v1.0)
-
-| Parameter | iOS | Android | Notes |
-|-----------|-----|---------|-------|
-| Implementation | MultipeerConnectivity | WiFi P2P API | Platform specific |
-| Max Speed | ~60 Mbps | ~250 Mbps | Theoretical maximum |
-| Range | ~60m | ~200m | Line of sight |
-| Cross-Platform | No | No | Same platform only |
-
-## Binary Protocol
-
-### Packet Structure
+### Layer Architecture
 
 ```
-+------------------+------------------+------------------+
-|     Header       |     Payload      |    Optional      |
-|    (13 bytes)    |   (Variable)     |   Signature      |
-+------------------+------------------+------------------+
+┌─────────────────────────────────────────────────────────────┐
+│                    Presentation Layer                       │
+│  • Flutter Widgets & Screens                               │
+│  • State Management (Provider)                             │
+│  • Navigation & Routing                                    │
+│  • Material Design 3 Theming                              │
+├─────────────────────────────────────────────────────────────┤
+│                    Application Layer                        │
+│  • Use Cases & Business Logic                              │
+│  • Application Services                                    │
+│  • DTOs & Data Transfer Objects                           │
+│  • Command Handlers                                        │
+├─────────────────────────────────────────────────────────────┤
+│                       Domain Layer                          │
+│  • Business Entities                                       │
+│  • Repository Interfaces                                   │
+│  • Domain Services                                         │
+│  • Value Objects                                           │
+├─────────────────────────────────────────────────────────────┤
+│                  Infrastructure Layer                       │
+│  • Repository Implementations                              │
+│  • External Service Integrations                          │
+│  • Data Persistence (Hive)                                │
+│  • Bluetooth Communication                                 │
+├─────────────────────────────────────────────────────────────┤
+│                      Platform Layer                         │
+│  • Platform Channels                                       │
+│  • Native Code Bridges                                     │
+│  • Hardware Abstraction                                    │
+│  • OS-Specific Implementations                            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### Header Format
+### Core Components
 
-| Byte Offset | Length | Field Name | Description |
-|-------------|--------|------------|-------------|
-| 0 | 1 | Version | Protocol version (0x01) |
-| 1 | 1 | Message Type | Message type identifier |
-| 2 | 1 | TTL | Time-to-live (max 7) |
-| 3 | 1 | Flags | Control flags |
-| 4 | 4 | Source ID | Originating device ID |
-| 8 | 4 | Destination ID | Target device ID (0x00000000 for broadcast) |
-| 12 | 1 | Payload Length | Length of payload data |
-
-### Message Types
-
-| Type | Value | Name | Description |
-|------|-------|------|-------------|
-| 0x01 | 1 | `MSG_DISCOVERY` | Peer discovery announcement |
-| 0x02 | 2 | `MSG_CHANNEL` | Channel message |
-| 0x03 | 3 | `MSG_PRIVATE` | Private message |
-| 0x04 | 4 | `MSG_ROUTING` | Routing table update |
-| 0x05 | 5 | `MSG_ACK` | Acknowledgment |
-| 0x06 | 6 | `MSG_FRAGMENT` | Message fragment |
-| 0x07 | 7 | `MSG_PING` | Keep-alive ping |
-| 0x08 | 8 | `MSG_PONG` | Ping response |
-
-### Flag Bits
-
-```
-Bit 7 | Bit 6 | Bit 5 | Bit 4 | Bit 3 | Bit 2 | Bit 1 | Bit 0
-------|-------|-------|-------|-------|-------|-------|-------
- ACK  | FRAG  | COMP  | ENC   | SIGN  | RES   | RES   | RES
-```
-
-- **ACK (0x80)**: Acknowledgment required
-- **FRAG (0x40)**: Fragmented message
-- **COMP (0x20)**: Compressed payload
-- **ENC (0x10)**: Encrypted payload
-- **SIGN (0x08)**: Digital signature present
-- **RES (0x04-0x01)**: Reserved for future use
-
-## Cryptographic Specifications
-
-### Key Exchange
-
-| Algorithm | Parameters | Implementation |
-|-----------|------------|----------------|
-| X25519 | 256-bit keys | RFC 7748 compliant |
-| HKDF | SHA-256 | RFC 5869 |
-
-### Symmetric Encryption
-
-| Algorithm | Parameters | Implementation |
-|-----------|------------|----------------|
-| AES-256-GCM | 256-bit key | NIST SP 800-38D |
-| Nonce | 96 bits (12 bytes) | Random |
-| Authentication Tag | 128 bits (16 bytes) | GCM tag |
-
-### Digital Signatures
-
-| Algorithm | Parameters | Implementation |
-|-----------|------------|----------------|
-| Ed25519 | 256-bit keys | RFC 8032 |
-| Signature Size | 512 bits (64 bytes) | Standard |
-
-### Key Derivation (Channels)
-
-| Algorithm | Parameters | Implementation |
-|-----------|------------|----------------|
-| Argon2id | Memory: 65536 KB (64 MB) | Password-based |
-| | Time: 3 iterations | |
-| | Parallelism: 4 threads | |
-| | Salt: 128 bits (16 bytes) | |
-| | Output: 256 bits (32 bytes) | |
-
-## Data Storage
-
-### Local Database
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| Primary Storage | Hive | NoSQL database |
-| Encryption | AES-256-GCM | Database encryption |
-| Data Types | Boxed collections | Messages, peers, channels |
-| Persistence | Optional | User configurable |
-
-### Storage Collections
-
-| Collection | Contents | Persistence |
-|------------|----------|-------------|
-| messages | Chat messages | Ephemeral (default) |
-| channels | Channel metadata | Semi-persistent |
-| peers | Peer information | Semi-persistent |
-| settings | User preferences | Persistent |
-
-## Performance Targets
-
-| Metric | Target | Notes |
-|--------|--------|-------|
-| App Launch Time | < 2 seconds | Cold start |
-| Message Send Latency | < 500ms | Direct connection |
-| Message Relay | < 1 second per hop | Multi-hop routing |
-| Battery Impact | < 5% per hour | Background operation |
-| Memory Footprint | < 100 MB | Active use |
-| Storage Size | < 50 MB | Base application |
-
-## Message Compression
-
-| Aspect | Specification | Notes |
-|--------|---------------|-------|
-| Algorithm | LZ4 | Fast compression |
-| Threshold | 100 bytes | Messages larger than threshold |
-| Compression Ratio | 30-70% | Typical for text messages |
-| Entropy Check | Yes | Skip high-entropy data |
-
-## UI Specifications
-
-### Theme
-
-| Component | Dark Theme | Light Theme |
-|-----------|------------|-------------|
-| Primary Background | #0D1117 | #FFFFFF |
-| Secondary Background | #161B22 | #F6F8FA |
-| Card Background | #21262D | #FFFFFF |
-| Input Background | #30363D | #F6F8FA |
-| Primary Text | #F0F6FC | #24292F |
-| Secondary Text | #8B949E | #656D76 |
-| Accent Color | #58A6FF | #0969DA |
-| Success Color | #3FB950 | #1A7F37 |
-| Warning Color | #D29922 | #9A6700 |
-| Error Color | #F85149 | #CF222E |
-
-### Typography
-
-| Element | Font Family | Weight | Size |
-|---------|------------|--------|------|
-| Channel Header | Roboto | Bold | 18sp |
-| Message Text | Roboto Mono | Regular | 14sp |
-| Input Text | Roboto Mono | Regular | 14sp |
-| Timestamp | Roboto Mono | Light | 12sp |
-| Username | Roboto | Medium | 14sp |
-
-### Layout
-
-| Screen Size | Layout Type | Notes |
-|-------------|-------------|-------|
-| < 600dp | Single Pane | Mobile phones |
-| 600dp - 900dp | Dual Pane (optional) | Tablets |
-| > 900dp | Dual Pane | Desktops |
-
-## Commands
-
-### Standard Commands
-
-| Command | Format | Description |
-|---------|--------|-------------|
-| Join | `/j #channel [password]` | Join or create a channel |
-| Private Message | `/m @name message` | Send a private message |
-| Who | `/w [channel]` | List users in channel or all channels |
-| Channels | `/channels` | List available channels |
-| Block | `/block @name` | Block a user |
-| Unblock | `/unblock @name` | Unblock a user |
-| Clear | `/clear` | Clear current chat |
-| Set Password | `/pass [password]` | Set channel password (owner only) |
-| Transfer | `/transfer @name` | Transfer channel ownership |
-| Save | `/save` | Toggle message retention |
-
-### Maintenance Commands
-
-| Command | Format | Description |
-|---------|--------|-------------|
-| Peers | `/peers` | Show connected peers |
-| Mesh | `/mesh` | Show mesh network status |
-| Battery | `/battery` | Show battery optimization |
-| Encrypt | `/encrypt` | Show encryption status |
-| Wipe | `/wipe` | Emergency data wipe |
-
-## Platform Interfaces
-
-### Android
-
-| Component | Implementation | Purpose |
-|-----------|---------------|---------|
-| BLE Central | BluetoothManager | Scanning, connecting |
-| BLE Peripheral | BluetoothGattServer | Advertising, receiving |
-| Background | Foreground Service | Persistent operation |
-| Permissions | Runtime Permissions | BLE, location |
-
-### iOS
-
-| Component | Implementation | Purpose |
-|-----------|----------------|---------|
-| BLE Central | CBCentralManager | Scanning, connecting |
-| BLE Peripheral | CBPeripheralManager | Advertising, receiving |
-| Background | Background Modes | Bluetooth operations |
-| Permissions | Info.plist | BLE usage description |
-
-## Security Requirements
-
-| Aspect | Requirement | Implementation |
-|--------|-------------|----------------|
-| No External Dependencies | All crypto verifiable | Pure Dart/Flutter |
-| Memory Management | Secure cleanup | Zeroing sensitive data |
-| Key Storage | Ephemeral in memory | No persistent keys |
-| Traffic Analysis | Cover traffic | Random delays, dummy messages |
-| Emergency Wipe | Triple-tap mechanism | Complete data erasure |
-
-## Logging and Monitoring
-
-| Level | Usage | Examples |
-|-------|-------|----------|
-| Debug | Development only | Connection details, scan results |
-| Info | General operation | Peer discovery, channel joins |
-| Warning | Non-critical issues | Reconnection attempts, timeouts |
-| Error | Critical problems | Encryption failures, BLE errors |
-
-### Privacy Protection
-
-- No user identifiable data in logs
-- No message content logging
-- No persistent logs in release builds
-- No analytics or telemetry
-
-## WiFi Direct Extension (Planned)
-
-### Transport Abstraction
-
+#### 1. Bluetooth Mesh Network Stack
 ```dart
-abstract class TransportProtocol {
-  Future<void> initialize();
-  Future<bool> isAvailable();
-  Future<void> startDiscovery();
-  Future<void> stopDiscovery();
-  Future<void> send(Uint8List data, String peerId);
-  Stream<TransportData> get dataStream;
+// Technical architecture for BLE mesh networking
+class BluetoothMeshStack {
+  // Layer 1: BLE Transport (flutter_blue_plus)
+  final BluetoothTransport transport;
+  
+  // Layer 2: Packet Assembly/Parsing
+  final PacketProcessor packetProcessor;
+  
+  // Layer 3: Message Routing
+  final MeshRouter meshRouter;
+  
+  // Layer 4: Encryption/Decryption
+  final EncryptionService encryptionService;
+  
+  // Layer 5: Application Messages
+  final MessageHandler messageHandler;
 }
 ```
 
-### iOS Implementation
+**Technical Constraints:**
+- **Maximum BLE MTU**: 512 bytes (negotiated, fallback to 23 bytes)
+- **Maximum Payload**: 499 bytes (512 - 13 byte header)
+- **Fragmented Payload**: 491 bytes (499 - 8 byte fragment header)
+- **Maximum Connections**: 8 simultaneous BLE connections (platform limit)
+- **Maximum TTL**: 7 hops for mesh routing
+- **Connection Timeout**: 30 seconds for BLE connection establishment
 
-| Component | Implementation | Notes |
-|-----------|---------------|-------|
-| Framework | MultipeerConnectivity | Native iOS |
-| Discovery | MCNearbyServiceBrowser | Bonjour-based |
-| Connections | MCSession | Encrypted sessions |
-| Range | ~60 meters | Line of sight |
+#### 2. Message Processing Pipeline
+```dart
+// Message flow architecture
+class MessagePipeline {
+  // Input: Raw BLE data
+  Stream<Uint8List> bleDataStream;
+  
+  // Stage 1: Packet parsing and validation
+  Stream<BitChatPacket> packetStream;
+  
+  // Stage 2: Decryption and authentication
+  Stream<DecryptedMessage> decryptedStream;
+  
+  // Stage 3: Routing decision (local/forward)
+  Stream<RoutedMessage> routedStream;
+  
+  // Stage 4: Application processing
+  Stream<ApplicationMessage> messageStream;
+  
+  // Output: UI updates
+  Stream<UIEvent> uiEventStream;
+}
+```
 
-### Android Implementation
+**Performance Specifications:**
+- **Message Throughput**: Minimum 10 messages/second
+- **Processing Latency**: <100ms for local messages, <2s for direct peer messages
+- **Memory Usage**: <50MB for message processing pipeline
+- **CPU Usage**: <10% during active messaging
 
-| Component | Implementation | Notes |
-|-----------|---------------|-------|
-| Framework | WiFi P2P API | WifiP2pManager |
-| Discovery | discoverPeers() | Network discovery |
-| Connections | WifiP2pConfig | Direct connection |
-| Range | ~200 meters | Line of sight |
+## Protocol Specifications
 
-## Glossary
+### Binary Packet Format
 
-| Term | Definition |
-|------|------------|
-| BLE | Bluetooth Low Energy |
-| TTL | Time To Live - hop count for message routing |
-| MTU | Maximum Transmission Unit - packet size limit |
-| RSSI | Received Signal Strength Indicator |
-| AES-GCM | Advanced Encryption Standard in Galois/Counter Mode |
-| X25519 | Elliptic curve Diffie-Hellman key exchange |
-| Ed25519 | Edwards-curve Digital Signature Algorithm |
-| Argon2id | Modern key derivation function |
-| LZ4 | Fast compression algorithm |
+#### Header Structure (13 bytes)
+```dart
+class PacketHeader {
+  static const int HEADER_LENGTH = 13;
+  
+  final int version;        // Byte 0: Protocol version (0x01)
+  final int messageType;    // Byte 1: Message type enumeration
+  final int ttl;           // Byte 2: Time-to-live (0-7)
+  final int flags;         // Byte 3: Control flags
+  final Uint8List sourceId;     // Bytes 4-7: Source device ID
+  final Uint8List destinationId; // Bytes 8-11: Destination device ID
+  final int payloadLength; // Byte 12: Payload length
+}
+```
 
----
+#### Message Types
+```dart
+enum MessageType {
+  announce(0x01),           // Peer discovery announcement
+  leave(0x03),             // Peer departure notification
+  message(0x04),           // User messages
+  fragmentStart(0x05),     // Message fragmentation start
+  fragmentContinue(0x06),  // Message fragmentation continue
+  fragmentEnd(0x07),       // Message fragmentation end
+  channelAnnounce(0x08),   // Channel status announcement
+  deliveryAck(0x0A),       // Message delivery acknowledgment
+  noiseHandshakeInit(0x10), // Noise handshake initiation
+  noiseHandshakeResp(0x11), // Noise handshake response
+  noiseEncrypted(0x12),    // Noise encrypted transport
+  noiseIdentityAnnounce(0x13), // Identity announcement
+}
+```
 
-This document will be updated as specifications evolve during development. All implementations must adhere to these specifications to ensure cross-platform compatibility and security.
+#### Flag Bits
+```dart
+class PacketFlags {
+  static const int ACK_REQUIRED = 0x80;    // Acknowledgment required
+  static const int FRAGMENTED = 0x40;      // Fragmented message
+  static const int COMPRESSED = 0x20;      // Compressed payload
+  static const int ENCRYPTED = 0x10;       // Encrypted payload
+  static const int SIGNED = 0x08;          // Digital signature present
+  // Bits 0-2 reserved for future use
+}
+```
+
+### Bluetooth LE Specifications
+
+#### Service Configuration
+```dart
+class BLEServiceConfig {
+  // Primary service UUID (must match iOS/Android)
+  static const String SERVICE_UUID = "F47B5E2D-4A9E-4C5A-9B3F-8E1D2C3A4B5C";
+  
+  // Characteristic UUIDs
+  static const String TX_CHARACTERISTIC = "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5D";
+  static const String RX_CHARACTERISTIC = "A1B2C3D4-E5F6-4A5B-8C9D-0E1F2A3B4C5E";
+  
+  // Connection parameters
+  static const Duration CONNECTION_TIMEOUT = Duration(seconds: 30);
+  static const Duration SCAN_TIMEOUT = Duration(seconds: 10);
+  static const Duration SCAN_INTERVAL = Duration(seconds: 30);
+  
+  // MTU configuration
+  static const int PREFERRED_MTU = 512;
+  static const int MINIMUM_MTU = 23;
+  static const int DEFAULT_MTU = 185; // iOS default
+}
+```
+
+#### Advertisement Data Format
+```dart
+class AdvertisementData {
+  // Local name format: "BitChat-{8-char-device-id}"
+  final String localName;
+  
+  // Service UUIDs
+  final List<String> serviceUuids;
+  
+  // Manufacturer data (0xFFFF company ID)
+  final Map<int, List<int>> manufacturerData;
+  
+  // TX power level
+  final int? txPowerLevel;
+}
+```
+
+### Cryptographic Specifications
+
+#### Encryption Algorithms
+```dart
+class CryptographicSpecs {
+  // Key exchange
+  static const String KEY_EXCHANGE = "X25519";
+  static const int KEY_EXCHANGE_KEY_SIZE = 32; // 256 bits
+  
+  // Symmetric encryption
+  static const String SYMMETRIC_CIPHER = "AES-256-GCM";
+  static const int SYMMETRIC_KEY_SIZE = 32;    // 256 bits
+  static const int NONCE_SIZE = 12;            // 96 bits
+  static const int TAG_SIZE = 16;              // 128 bits
+  
+  // Digital signatures
+  static const String SIGNATURE_ALGORITHM = "Ed25519";
+  static const int SIGNATURE_KEY_SIZE = 32;    // 256 bits
+  static const int SIGNATURE_SIZE = 64;        // 512 bits
+  
+  // Key derivation
+  static const String KDF_ALGORITHM = "Argon2id";
+  static const int KDF_MEMORY_COST = 65536;    // 64 MB
+  static const int KDF_TIME_COST = 3;          // 3 iterations
+  static const int KDF_PARALLELISM = 4;        // 4 threads
+  static const int KDF_SALT_SIZE = 16;         // 128 bits
+  static const int KDF_OUTPUT_SIZE = 32;       // 256 bits
+  
+  // Hashing
+  static const String HASH_ALGORITHM = "SHA-256";
+  static const int HASH_SIZE = 32;             // 256 bits
+}
+```
+
+#### Noise Protocol Implementation
+```dart
+class NoiseProtocolSpecs {
+  // Protocol pattern
+  static const String PATTERN = "XX";
+  
+  // Cryptographic functions
+  static const String DH_FUNCTION = "25519";
+  static const String CIPHER_FUNCTION = "ChaChaPoly";
+  static const String HASH_FUNCTION = "SHA256";
+  
+  // Protocol name
+  static const String PROTOCOL_NAME = "Noise_XX_25519_ChaChaPoly_SHA256";
+  
+  // Handshake parameters
+  static const int HANDSHAKE_MESSAGES = 3;
+  static const Duration HANDSHAKE_TIMEOUT = Duration(seconds: 30);
+  
+  // Transport parameters
+  static const int MAX_MESSAGE_SIZE = 65535;
+  static const Duration REKEY_INTERVAL = Duration(hours: 1);
+}
+```
+
+## Data Storage Specifications
+
+### Local Storage Architecture
+```dart
+// Hive-based storage system
+class StorageArchitecture {
+  // Storage boxes
+  static const String MESSAGES_BOX = "messages";
+  static const String CHANNELS_BOX = "channels";
+  static const String PEERS_BOX = "peers";
+  static const String KEYS_BOX = "keys";        // Encrypted
+  static const String SETTINGS_BOX = "settings";
+  static const String ROUTING_BOX = "routing";
+  
+  // Storage limits
+  static const int MAX_MESSAGES_PER_CHANNEL = 10000;
+  static const int MAX_CACHED_PEERS = 1000;
+  static const int MAX_ROUTING_ENTRIES = 500;
+  static const Duration MESSAGE_RETENTION = Duration(days: 30);
+}
+```
+
+### Data Models
+```dart
+// Core data structures
+@HiveType(typeId: 1)
+class StoredMessage extends HiveObject {
+  @HiveField(0)
+  final String id;
+  
+  @HiveField(1)
+  final String content;
+  
+  @HiveField(2)
+  final String senderId;
+  
+  @HiveField(3)
+  final String? channelId;
+  
+  @HiveField(4)
+  final DateTime timestamp;
+  
+  @HiveField(5)
+  final bool isEncrypted;
+  
+  @HiveField(6)
+  final MessageType type;
+}
+
+@HiveType(typeId: 2)
+class StoredChannel extends HiveObject {
+  @HiveField(0)
+  final String id;
+  
+  @HiveField(1)
+  final String name;
+  
+  @HiveField(2)
+  final String? topic;
+  
+  @HiveField(3)
+  final bool isPasswordProtected;
+  
+  @HiveField(4)
+  final DateTime joinedAt;
+  
+  @HiveField(5)
+  final List<String> memberIds;
+}
+```
+
+### Storage Performance Requirements
+- **Read Latency**: <10ms for single record access
+- **Write Latency**: <50ms for single record write
+- **Batch Operations**: Support 1000+ records in single transaction
+- **Storage Efficiency**: <1MB per 1000 messages
+- **Concurrent Access**: Thread-safe operations with proper locking
+
+## Network Architecture
+
+### Mesh Topology
+```dart
+class MeshNetworkSpecs {
+  // Network parameters
+  static const int MAX_HOPS = 7;
+  static const int DEFAULT_TTL = 3;
+  static const int MAX_PEERS = 100;
+  static const int MAX_DIRECT_CONNECTIONS = 8;
+  
+  // Routing parameters
+  static const Duration ROUTING_UPDATE_INTERVAL = Duration(minutes: 1);
+  static const Duration PEER_TIMEOUT = Duration(minutes: 5);
+  static const Duration MESSAGE_CACHE_TIMEOUT = Duration(hours: 24);
+  
+  // Performance parameters
+  static const int MAX_QUEUED_MESSAGES = 1000;
+  static const int MAX_RETRY_ATTEMPTS = 3;
+  static const Duration RETRY_DELAY = Duration(seconds: 5);
+}
+```
+
+### Connection Management
+```dart
+class ConnectionSpecs {
+  // Connection lifecycle
+  static const Duration CONNECTION_ESTABLISHMENT_TIMEOUT = Duration(seconds: 30);
+  static const Duration CONNECTION_IDLE_TIMEOUT = Duration(minutes: 10);
+  static const Duration RECONNECTION_DELAY = Duration(seconds: 15);
+  
+  // Connection quality
+  static const int MIN_RSSI_THRESHOLD = -80; // dBm
+  static const double MAX_PACKET_LOSS_RATE = 0.05; // 5%
+  static const Duration MAX_ROUND_TRIP_TIME = Duration(seconds: 2);
+  
+  // Connection prioritization
+  static const int SIGNAL_STRENGTH_WEIGHT = 40;
+  static const int STABILITY_WEIGHT = 30;
+  static const int LATENCY_WEIGHT = 20;
+  static const int BATTERY_WEIGHT = 10;
+}
+```
+
+## Platform-Specific Technical Constraints
+
+### iOS Platform Constraints
+```dart
+class IOSConstraints {
+  // iOS-specific limitations
+  static const int MAX_BACKGROUND_EXECUTION_TIME = 30; // seconds
+  static const int MAX_CONCURRENT_CONNECTIONS = 8;
+  static const Duration BACKGROUND_SCAN_INTERVAL = Duration(minutes: 1);
+  
+  // Core Bluetooth limitations
+  static const int MAX_CHARACTERISTIC_VALUE_SIZE = 512;
+  static const bool SUPPORTS_EXTENDED_ADVERTISING = false;
+  static const bool REQUIRES_LOCATION_PERMISSION = false;
+  
+  // iOS-specific features
+  static const bool SUPPORTS_BACKGROUND_PROCESSING = true;
+  static const bool SUPPORTS_KEYCHAIN_STORAGE = true;
+  static const bool SUPPORTS_SECURE_ENCLAVE = true; // iPhone 5s+
+}
+```
+
+### Android Platform Constraints
+```dart
+class AndroidConstraints {
+  // Android-specific limitations
+  static const int MIN_SDK_VERSION = 26; // Android 8.0
+  static const int TARGET_SDK_VERSION = 34; // Android 14
+  static const bool REQUIRES_LOCATION_PERMISSION = true;
+  
+  // BLE limitations by Android version
+  static const Map<int, int> MAX_CONNECTIONS_BY_VERSION = {
+    26: 7,  // Android 8.0
+    28: 8,  // Android 9.0
+    29: 8,  // Android 10.0+
+  };
+  
+  // Android-specific features
+  static const bool SUPPORTS_FOREGROUND_SERVICE = true;
+  static const bool SUPPORTS_HARDWARE_KEYSTORE = true; // API 23+
+  static const bool SUPPORTS_BLE_ADVERTISING = true;   // API 21+
+}
+```
+
+### Desktop Platform Constraints
+```dart
+class DesktopConstraints {
+  // Windows constraints
+  static const String WINDOWS_MIN_VERSION = "10.0.19041.0"; // 2004
+  static const bool WINDOWS_SUPPORTS_BLE = true;
+  static const int WINDOWS_MAX_CONNECTIONS = 8;
+  
+  // macOS constraints
+  static const String MACOS_MIN_VERSION = "11.0";
+  static const bool MACOS_SUPPORTS_BLE = true;
+  static const int MACOS_MAX_CONNECTIONS = 8;
+  
+  // Linux constraints
+  static const String LINUX_MIN_BLUEZ_VERSION = "5.50";
+  static const bool LINUX_SUPPORTS_BLE = true;
+  static const int LINUX_MAX_CONNECTIONS = 8;
+}
+```
+
+## Performance Specifications
+
+### Memory Management
+```dart
+class MemorySpecs {
+  // Memory limits
+  static const int MAX_HEAP_SIZE = 100 * 1024 * 1024; // 100MB
+  static const int MAX_MESSAGE_CACHE_SIZE = 50 * 1024 * 1024; // 50MB
+  static const int MAX_PEER_CACHE_SIZE = 10 * 1024 * 1024; // 10MB
+  
+  // Garbage collection
+  static const Duration GC_INTERVAL = Duration(minutes: 5);
+  static const double GC_THRESHOLD = 0.8; // 80% memory usage
+  
+  // Object pooling
+  static const int PACKET_POOL_SIZE = 100;
+  static const int MESSAGE_POOL_SIZE = 500;
+  static const int BUFFER_POOL_SIZE = 50;
+}
+```
+
+### CPU Performance
+```dart
+class CPUSpecs {
+  // CPU usage targets
+  static const double MAX_CPU_USAGE_ACTIVE = 0.15;  // 15%
+  static const double MAX_CPU_USAGE_IDLE = 0.05;    // 5%
+  static const double MAX_CPU_USAGE_BACKGROUND = 0.02; // 2%
+  
+  // Processing limits
+  static const int MAX_MESSAGES_PER_SECOND = 50;
+  static const int MAX_ENCRYPTION_OPS_PER_SECOND = 100;
+  static const int MAX_ROUTING_DECISIONS_PER_SECOND = 200;
+  
+  // Thread allocation
+  static const int BLUETOOTH_THREAD_POOL_SIZE = 4;
+  static const int CRYPTO_THREAD_POOL_SIZE = 2;
+  static const int UI_THREAD_PRIORITY = 10; // Highest
+}
+```
+
+### Battery Optimization
+```dart
+class BatterySpecs {
+  // Battery usage targets
+  static const double MAX_BATTERY_USAGE_PER_HOUR = 0.05; // 5%
+  static const double MAX_BATTERY_USAGE_BACKGROUND = 0.02; // 2%
+  
+  // Power management
+  static const Duration LOW_BATTERY_SCAN_INTERVAL = Duration(minutes: 2);
+  static const Duration NORMAL_SCAN_INTERVAL = Duration(seconds: 30);
+  static const Duration HIGH_BATTERY_SCAN_INTERVAL = Duration(seconds: 10);
+  
+  // Adaptive behavior
+  static const double LOW_BATTERY_THRESHOLD = 0.20;  // 20%
+  static const double CRITICAL_BATTERY_THRESHOLD = 0.10; // 10%
+  
+  // Power-saving features
+  static const bool ENABLE_DUTY_CYCLING = true;
+  static const bool ENABLE_CONNECTION_POOLING = true;
+  static const bool ENABLE_MESSAGE_BATCHING = true;
+}
+```
+
+## Security Technical Specifications
+
+### Key Management
+```dart
+class KeyManagementSpecs {
+  // Key lifecycle
+  static const Duration SESSION_KEY_LIFETIME = Duration(hours: 24);
+  static const Duration CHANNEL_KEY_LIFETIME = Duration(days: 7);
+  static const Duration IDENTITY_KEY_LIFETIME = Duration(days: 365);
+  
+  // Key rotation
+  static const int MAX_MESSAGES_PER_KEY = 10000;
+  static const Duration FORCED_ROTATION_INTERVAL = Duration(hours: 12);
+  
+  // Key storage
+  static const bool USE_SECURE_STORAGE = true;
+  static const bool ENCRYPT_KEYS_AT_REST = true;
+  static const String KEY_ENCRYPTION_ALGORITHM = "AES-256-GCM";
+  
+  // Key derivation
+  static const int KEY_DERIVATION_ITERATIONS = 100000;
+  static const int SALT_SIZE = 32; // 256 bits
+  static const bool USE_HARDWARE_KEYSTORE = true; // When available
+}
+```
+
+### Encryption Performance
+```dart
+class EncryptionSpecs {
+  // Performance targets
+  static const int MIN_ENCRYPTIONS_PER_SECOND = 100;
+  static const int MIN_DECRYPTIONS_PER_SECOND = 100;
+  static const Duration MAX_HANDSHAKE_TIME = Duration(seconds: 5);
+  
+  // Security parameters
+  static const int MIN_KEY_SIZE = 256; // bits
+  static const int MIN_NONCE_SIZE = 96; // bits
+  static const int MIN_TAG_SIZE = 128; // bits
+  
+  // Implementation requirements
+  static const bool USE_CONSTANT_TIME_OPERATIONS = true;
+  static const bool CLEAR_SENSITIVE_MEMORY = true;
+  static const bool USE_SECURE_RANDOM = true;
+}
+```
+
+## Testing Specifications
+
+### Unit Testing Requirements
+```dart
+class TestingSpecs {
+  // Coverage requirements
+  static const double MIN_CODE_COVERAGE = 0.80; // 80%
+  static const double MIN_CRITICAL_PATH_COVERAGE = 0.95; // 95%
+  
+  // Test categories
+  static const List<String> REQUIRED_TEST_CATEGORIES = [
+    'unit_tests',
+    'integration_tests',
+    'widget_tests',
+    'performance_tests',
+    'security_tests',
+  ];
+  
+  // Performance test requirements
+  static const Duration MAX_TEST_EXECUTION_TIME = Duration(minutes: 30);
+  static const int MIN_PERFORMANCE_TEST_ITERATIONS = 1000;
+  static const double MAX_PERFORMANCE_VARIANCE = 0.10; // 10%
+}
+```
+
+### Integration Testing
+```dart
+class IntegrationTestSpecs {
+  // Cross-platform testing
+  static const List<String> REQUIRED_PLATFORM_COMBINATIONS = [
+    'flutter_ios',
+    'flutter_android',
+    'flutter_macos',
+    'ios_android_flutter',
+  ];
+  
+  // Network testing
+  static const int MIN_MESH_SIZE_TESTING = 5;
+  static const int MAX_MESH_SIZE_TESTING = 20;
+  static const Duration MAX_MESSAGE_DELIVERY_TIME = Duration(seconds: 10);
+  
+  // Reliability testing
+  static const int MIN_RELIABILITY_TEST_DURATION_HOURS = 24;
+  static const double MIN_MESSAGE_DELIVERY_SUCCESS_RATE = 0.999; // 99.9%
+  static const int MAX_ACCEPTABLE_CRASHES_PER_DAY = 0;
+}
+```
+
+## Deployment Specifications
+
+### Build Configuration
+```dart
+class BuildSpecs {
+  // Flutter build configuration
+  static const String MIN_FLUTTER_VERSION = "3.16.0";
+  static const String MIN_DART_VERSION = "3.2.0";
+  
+  // Build modes
+  static const Map<String, Map<String, dynamic>> BUILD_CONFIGURATIONS = {
+    'debug': {
+      'obfuscation': false,
+      'tree_shaking': false,
+      'minification': false,
+    },
+    'profile': {
+      'obfuscation': false,
+      'tree_shaking': true,
+      'minification': false,
+    },
+    'release': {
+      'obfuscation': true,
+      'tree_shaking': true,
+      'minification': true,
+    },
+  };
+  
+  // Platform-specific build requirements
+  static const Map<String, Map<String, String>> PLATFORM_BUILD_REQUIREMENTS = {
+    'ios': {
+      'min_deployment_target': '14.0',
+      'xcode_version': '14.0+',
+    },
+    'android': {
+      'min_sdk_version': '26',
+      'target_sdk_version': '34',
+      'compile_sdk_version': '34',
+    },
+  };
+}
+```
+
+### Distribution Requirements
+```dart
+class DistributionSpecs {
+  // App store requirements
+  static const Map<String, List<String>> STORE_REQUIREMENTS = {
+    'ios_app_store': [
+      'app_transport_security',
+      'background_modes_declaration',
+      'bluetooth_usage_description',
+    ],
+    'google_play': [
+      'target_api_level_34',
+      'bluetooth_permissions',
+      'location_permissions',
+      'foreground_service_permissions',
+    ],
+  };
+  
+  // Security requirements
+  static const bool REQUIRE_CODE_SIGNING = true;
+  static const bool REQUIRE_CERTIFICATE_PINNING = true;
+  static const bool REQUIRE_OBFUSCATION = true;
+  
+  // Performance requirements
+  static const int MAX_APP_SIZE_MB = 50;
+  static const Duration MAX_STARTUP_TIME = Duration(seconds: 3);
+  static const int MAX_MEMORY_USAGE_MB = 100;
+}
+```
+
+## Monitoring and Diagnostics
+
+### Logging Specifications
+```dart
+class LoggingSpecs {
+  // Log levels
+  static const List<String> LOG_LEVELS = [
+    'TRACE',
+    'DEBUG',
+    'INFO',
+    'WARN',
+    'ERROR',
+    'FATAL',
+  ];
+  
+  // Log retention
+  static const Duration LOG_RETENTION_PERIOD = Duration(days: 7);
+  static const int MAX_LOG_FILE_SIZE_MB = 10;
+  static const int MAX_LOG_FILES = 5;
+  
+  // Sensitive data handling
+  static const bool LOG_SENSITIVE_DATA = false;
+  static const bool ENCRYPT_LOG_FILES = true;
+  static const List<String> SENSITIVE_FIELDS = [
+    'private_key',
+    'password',
+    'message_content',
+    'peer_id',
+  ];
+}
+```
+
+### Performance Monitoring
+```dart
+class MonitoringSpecs {
+  // Metrics collection
+  static const List<String> REQUIRED_METRICS = [
+    'message_throughput',
+    'connection_count',
+    'battery_usage',
+    'memory_usage',
+    'cpu_usage',
+    'network_latency',
+    'encryption_performance',
+  ];
+  
+  // Alerting thresholds
+  static const Map<String, double> ALERT_THRESHOLDS = {
+    'memory_usage_mb': 80.0,
+    'cpu_usage_percent': 20.0,
+    'battery_usage_percent_per_hour': 6.0,
+    'message_delivery_failure_rate': 0.01, // 1%
+  };
+  
+  // Reporting intervals
+  static const Duration METRICS_COLLECTION_INTERVAL = Duration(minutes: 1);
+  static const Duration METRICS_REPORTING_INTERVAL = Duration(minutes: 5);
+}
+```
+
+## Conclusion
+
+These technical specifications provide a comprehensive foundation for implementing BitChat Flutter while ensuring compatibility with existing iOS and Android implementations. The specifications balance performance, security, and maintainability requirements while leveraging Flutter's cross-platform capabilities.
+
+Key technical decisions include:
+
+1. **Architecture**: Clean Architecture with clear layer separation
+2. **State Management**: Provider pattern for reactive UI updates
+3. **Storage**: Hive for efficient local data persistence
+4. **Networking**: flutter_blue_plus for cross-platform BLE support
+5. **Cryptography**: Industry-standard algorithms with proper key management
+6. **Performance**: Optimized for mobile constraints with battery awareness
+7. **Testing**: Comprehensive testing strategy with high coverage requirements
+
+The implementation must strictly adhere to these specifications to ensure protocol compatibility, security, and performance requirements are met across all supported platforms.

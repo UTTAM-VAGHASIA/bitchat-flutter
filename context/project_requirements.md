@@ -1,307 +1,399 @@
 # BitChat Flutter - Project Requirements
 
-**Version:** 0.1.0  
-**Last Updated:** July 11, 2025
+## Introduction
 
-## Project Overview
+This document defines the comprehensive functional and non-functional requirements for the BitChat Flutter implementation. These requirements are derived from analysis of the mature iOS (50+ files) and Android (70+ files) reference implementations, ensuring 100% protocol compatibility while leveraging Flutter's cross-platform capabilities.
 
-BitChat Flutter is a decentralized peer-to-peer messaging application that operates over Bluetooth Low Energy (BLE) mesh networks without requiring internet access or centralized servers. This document outlines the functional and non-functional requirements for implementing BitChat in Flutter while maintaining compatibility with existing iOS and Android implementations.
-
-## Business Requirements
-
-| ID | Requirement | Priority |
-|----|------------|----------|
-| BR-01 | Create a fully functional Flutter implementation of BitChat | High |
-| BR-02 | Maintain 100% binary protocol compatibility with iOS/Android versions | High |
-| BR-03 | Support all existing features of BitChat iOS and Android | High |
-| BR-04 | Add WiFi Direct support for high-bandwidth transport | Medium |
-| BR-05 | Release as open source under public domain license | High |
-| BR-06 | Support cross-platform deployment (iOS, Android, desktop) | Medium |
+BitChat Flutter is a decentralized peer-to-peer messaging application that operates over Bluetooth Low Energy (BLE) mesh networks without requiring internet access or centralized servers. The Flutter implementation must maintain complete binary protocol compatibility with existing iOS and Android versions while providing a native Flutter experience across mobile and desktop platforms.
 
 ## Functional Requirements
 
-### Core Mesh Networking
+### FR-1: Core Messaging System
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| FN-01 | Implement BLE device advertising (peripheral mode) | High |
-| FN-02 | Implement BLE device scanning (central mode) | High |
-| FN-03 | Support simultaneous central and peripheral operation | High |
-| FN-04 | Implement multi-hop message routing with TTL | High |
-| FN-05 | Support store-and-forward for offline message delivery | High |
-| FN-06 | Implement peer discovery mechanism | High |
-| FN-07 | Provide mesh network status and monitoring | Medium |
-| FN-08 | Support automatic reconnection to known peers | Medium |
-| FN-09 | Implement dynamic routing table management | Medium |
+#### FR-1.1: Message Creation and Sending
+- **FR-1.1.1**: Users SHALL be able to compose text messages up to 4096 characters
+- **FR-1.1.2**: The system SHALL support Unicode (UTF-8) text encoding for international characters
+- **FR-1.1.3**: Messages SHALL be automatically fragmented when exceeding BLE MTU limits (512 bytes)
+- **FR-1.1.4**: The system SHALL provide real-time message composition indicators
+- **FR-1.1.5**: Users SHALL be able to send messages to channels or individual users
 
-### Encryption and Security
+#### FR-1.2: Message Reception and Display
+- **FR-1.2.1**: The system SHALL display messages in chronological order with timestamps
+- **FR-1.2.2**: Messages SHALL show sender identification (nickname or peer ID)
+- **FR-1.2.3**: The system SHALL indicate message encryption status visually
+- **FR-1.2.4**: Messages SHALL display delivery status (sending, sent, delivered, failed)
+- **FR-1.2.5**: The system SHALL support message history persistence across app restarts
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| SEC-01 | Implement X25519 key exchange for private messages | High |
-| SEC-02 | Implement AES-256-GCM for message encryption | High |
-| SEC-03 | Implement Ed25519 for message signatures | High |
-| SEC-04 | Implement Argon2id for channel password derivation | High |
-| SEC-05 | Support forward secrecy with session key rotation | High |
-| SEC-06 | Implement secure memory handling for sensitive data | High |
-| SEC-07 | Support emergency data wipe functionality | High |
-| SEC-08 | Implement cover traffic generation | Medium |
-| SEC-09 | Support timing randomization for transmission | Medium |
+#### FR-1.3: Message Types
+- **FR-1.3.1**: The system SHALL support broadcast messages to all connected peers
+- **FR-1.3.2**: The system SHALL support private messages between two users
+- **FR-1.3.3**: The system SHALL support channel messages within password-protected groups
+- **FR-1.3.4**: The system SHALL support system messages for network events (join, leave, etc.)
+- **FR-1.3.5**: The system SHALL support command messages for system control
 
-### Messaging Features
+### FR-2: Bluetooth Mesh Networking
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| MSG-01 | Implement channel-based group messaging | High |
-| MSG-02 | Support private direct messaging | High |
-| MSG-03 | Implement IRC-style command system | High |
-| MSG-04 | Support channel password protection | High |
-| MSG-05 | Implement channel ownership and permissions | High |
-| MSG-06 | Support optional message retention settings | High |
-| MSG-07 | Implement message delivery acknowledgments | Medium |
-| MSG-08 | Support @mention functionality | Medium |
-| MSG-09 | Implement user blocking capabilities | Medium |
+#### FR-2.1: Peer Discovery
+- **FR-2.1.1**: The system SHALL automatically discover nearby BitChat peers via BLE advertising
+- **FR-2.1.2**: The system SHALL maintain a list of discovered peers with signal strength
+- **FR-2.1.3**: The system SHALL support both central and peripheral BLE roles simultaneously
+- **FR-2.1.4**: The system SHALL filter discovered devices to BitChat-compatible peers only
+- **FR-2.1.5**: The system SHALL handle peer appearance and disappearance gracefully
 
-### User Interface
+#### FR-2.2: Connection Management
+- **FR-2.2.1**: The system SHALL establish BLE connections with discovered peers automatically
+- **FR-2.2.2**: The system SHALL maintain up to 8 simultaneous BLE connections (platform limit)
+- **FR-2.2.3**: The system SHALL prioritize connections based on signal strength and stability
+- **FR-2.2.4**: The system SHALL implement connection retry logic with exponential backoff
+- **FR-2.2.5**: The system SHALL gracefully handle connection failures and timeouts
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| UI-01 | Create terminal-inspired chat interface | High |
-| UI-02 | Implement dark mode as default theme | High |
-| UI-03 | Support optional light theme | Medium |
-| UI-04 | Implement responsive layouts for different screen sizes | High |
-| UI-05 | Support Material Design 3 components | High |
-| UI-06 | Implement RSSI signal strength indicators | Medium |
-| UI-07 | Support haptic feedback for interactions | Low |
-| UI-08 | Implement accessibility features | Medium |
-| UI-09 | Create adaptive UI for different platforms | Medium |
+#### FR-2.3: Mesh Routing
+- **FR-2.3.1**: The system SHALL implement TTL-based message routing with maximum 7 hops
+- **FR-2.3.2**: The system SHALL maintain routing tables for multi-hop message delivery
+- **FR-2.3.3**: The system SHALL prevent message loops through duplicate detection
+- **FR-2.3.4**: The system SHALL implement store-and-forward for offline peers
+- **FR-2.3.5**: The system SHALL optimize routing paths based on network topology
 
-### Performance Optimization
+### FR-3: Security and Encryption
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| PERF-01 | Implement LZ4 compression for messages >100 bytes | High |
-| PERF-02 | Support adaptive power modes based on battery level | High |
-| PERF-03 | Implement Bloom filters for message deduplication | High |
-| PERF-04 | Support message aggregation for efficiency | Medium |
-| PERF-05 | Implement adaptive scan intervals | High |
-| PERF-06 | Support connection prioritization | Medium |
-| PERF-07 | Optimize memory usage for resource-constrained devices | Medium |
-| PERF-08 | Implement background operation optimizations | High |
+#### FR-3.1: End-to-End Encryption
+- **FR-3.1.1**: The system SHALL encrypt all private messages using X25519 key exchange
+- **FR-3.1.2**: The system SHALL use AES-256-GCM for symmetric message encryption
+- **FR-3.1.3**: The system SHALL implement Noise Protocol XX pattern for mutual authentication
+- **FR-3.1.4**: The system SHALL generate unique session keys for each peer relationship
+- **FR-3.1.5**: The system SHALL provide forward secrecy through key rotation
 
-### WiFi Direct Support (Planned)
+#### FR-3.2: Channel Security
+- **FR-3.2.1**: The system SHALL support password-protected channels using Argon2id key derivation
+- **FR-3.2.2**: Channel passwords SHALL be 8-128 characters in length
+- **FR-3.2.3**: The system SHALL verify channel access through cryptographic proof
+- **FR-3.2.4**: The system SHALL support channel key rotation by channel creators
+- **FR-3.2.5**: The system SHALL prevent unauthorized channel access
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| WIFI-01 | Create transport protocol abstraction layer | Medium |
-| WIFI-02 | Implement iOS MultipeerConnectivity integration | Medium |
-| WIFI-03 | Implement Android WiFi P2P API integration | Medium |
-| WIFI-04 | Support intelligent transport selection | Medium |
-| WIFI-05 | Implement multi-transport mesh capabilities | Medium |
-| WIFI-06 | Support large message/file transfer | Low |
-| WIFI-07 | Maintain compatibility with BLE-only devices | High |
+#### FR-3.3: Identity Management
+- **FR-3.3.1**: The system SHALL generate unique peer identifiers using Ed25519 public keys
+- **FR-3.3.2**: The system SHALL support user-defined nicknames (1-32 characters)
+- **FR-3.3.3**: The system SHALL maintain persistent identity across sessions
+- **FR-3.3.4**: The system SHALL support identity verification through fingerprints
+- **FR-3.3.5**: The system SHALL protect user privacy through ephemeral identifiers
+
+### FR-4: Channel Management
+
+#### FR-4.1: Channel Operations
+- **FR-4.1.1**: Users SHALL be able to create new channels with optional passwords
+- **FR-4.1.2**: Users SHALL be able to join existing channels with correct passwords
+- **FR-4.1.3**: Users SHALL be able to leave channels at any time
+- **FR-4.1.4**: The system SHALL maintain a list of joined channels
+- **FR-4.1.5**: Channel creators SHALL be able to set channel topics and descriptions
+
+#### FR-4.2: Channel Discovery
+- **FR-4.2.1**: The system SHALL announce available channels to connected peers
+- **FR-4.2.2**: Users SHALL be able to browse available channels
+- **FR-4.2.3**: The system SHALL display channel member counts
+- **FR-4.2.4**: The system SHALL indicate password-protected channels
+- **FR-4.2.5**: The system SHALL support channel search and filtering
+
+#### FR-4.3: Channel Administration
+- **FR-4.3.1**: Channel creators SHALL have administrative privileges
+- **FR-4.3.2**: Administrators SHALL be able to change channel passwords
+- **FR-4.3.3**: Administrators SHALL be able to remove users from channels
+- **FR-4.3.4**: The system SHALL support channel moderation features
+- **FR-4.3.5**: The system SHALL maintain channel membership persistence
+
+### FR-5: User Interface
+
+#### FR-5.1: Chat Interface
+- **FR-5.1.1**: The system SHALL provide a terminal-inspired IRC-style interface
+- **FR-5.1.2**: The interface SHALL display messages in a scrollable list
+- **FR-5.1.3**: The system SHALL provide a text input field with command support
+- **FR-5.1.4**: The interface SHALL show current channel and connection status
+- **FR-5.1.5**: The system SHALL support both dark and light themes
+
+#### FR-5.2: Navigation
+- **FR-5.2.1**: Users SHALL be able to switch between channels easily
+- **FR-5.2.2**: The system SHALL provide a channel list sidebar or drawer
+- **FR-5.2.3**: The interface SHALL indicate unread messages per channel
+- **FR-5.2.4**: Users SHALL be able to access settings and preferences
+- **FR-5.2.5**: The system SHALL support keyboard shortcuts for common actions
+
+#### FR-5.3: Status Indicators
+- **FR-5.3.1**: The system SHALL display Bluetooth connection status
+- **FR-5.3.2**: The interface SHALL show number of connected peers
+- **FR-5.3.3**: The system SHALL indicate message encryption status
+- **FR-5.3.4**: The interface SHALL display signal strength for connections
+- **FR-5.3.5**: The system SHALL show battery optimization status
+
+### FR-6: Command System
+
+#### FR-6.1: IRC-Style Commands
+- **FR-6.1.1**: The system SHALL support `/join <channel> [password]` for channel joining
+- **FR-6.1.2**: The system SHALL support `/leave <channel>` for channel leaving
+- **FR-6.1.3**: The system SHALL support `/msg <user> <message>` for private messages
+- **FR-6.1.4**: The system SHALL support `/who [channel]` for user listing
+- **FR-6.1.5**: The system SHALL support `/nick <nickname>` for name changes
+
+#### FR-6.2: System Commands
+- **FR-6.2.1**: The system SHALL support `/peers` for connected peer information
+- **FR-6.2.2**: The system SHALL support `/channels` for available channel listing
+- **FR-6.2.3**: The system SHALL support `/help` for command documentation
+- **FR-6.2.4**: The system SHALL support `/settings` for configuration access
+- **FR-6.2.5**: The system SHALL support `/wipe` for emergency data deletion
+
+#### FR-6.3: Command Processing
+- **FR-6.3.1**: The system SHALL parse commands starting with '/' character
+- **FR-6.3.2**: The system SHALL provide command auto-completion
+- **FR-6.3.3**: The system SHALL maintain command history
+- **FR-6.3.4**: The system SHALL validate command syntax and parameters
+- **FR-6.3.5**: The system SHALL provide helpful error messages for invalid commands
+
+### FR-7: Data Management
+
+#### FR-7.1: Message Storage
+- **FR-7.1.1**: The system SHALL store message history locally
+- **FR-7.1.2**: The system SHALL implement message retention policies
+- **FR-7.1.3**: The system SHALL support message search functionality
+- **FR-7.1.4**: The system SHALL encrypt stored messages at rest
+- **FR-7.1.5**: The system SHALL support message export functionality
+
+#### FR-7.2: Settings Persistence
+- **FR-7.2.1**: The system SHALL persist user preferences across sessions
+- **FR-7.2.2**: The system SHALL store channel memberships
+- **FR-7.2.3**: The system SHALL maintain peer relationship data
+- **FR-7.2.4**: The system SHALL support settings backup and restore
+- **FR-7.2.5**: The system SHALL provide settings synchronization across devices
+
+#### FR-7.3: Key Management
+- **FR-7.3.1**: The system SHALL securely store cryptographic keys
+- **FR-7.3.2**: The system SHALL implement key rotation schedules
+- **FR-7.3.3**: The system SHALL support key backup and recovery
+- **FR-7.3.4**: The system SHALL provide secure key deletion
+- **FR-7.3.5**: The system SHALL maintain key derivation audit trails
 
 ## Non-Functional Requirements
 
-### Compatibility
+### NFR-1: Performance Requirements
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| COMP-01 | Maintain 100% binary protocol compatibility with iOS | Critical |
-| COMP-02 | Maintain 100% binary protocol compatibility with Android | Critical |
-| COMP-03 | Support iOS 14.0+ devices | High |
-| COMP-04 | Support Android 8.0+ (API 26+) devices | High |
-| COMP-05 | Support macOS 11.0+ for desktop version | Medium |
-| COMP-06 | Support Windows 10+ for desktop version | Medium |
-| COMP-07 | Support Linux (Ubuntu 20.04+) for desktop version | Low |
+#### NFR-1.1: Message Throughput
+- **NFR-1.1.1**: The system SHALL support minimum 10 messages per second throughput
+- **NFR-1.1.2**: Message delivery latency SHALL be under 2 seconds for direct connections
+- **NFR-1.1.3**: Multi-hop message delivery SHALL complete within 10 seconds
+- **NFR-1.1.4**: The system SHALL handle 1000+ messages in chat history without performance degradation
+- **NFR-1.1.5**: Message fragmentation and reassembly SHALL complete within 5 seconds
 
-### Security
+#### NFR-1.2: Connection Performance
+- **NFR-1.2.1**: Peer discovery SHALL complete within 30 seconds of app startup
+- **NFR-1.2.2**: BLE connection establishment SHALL complete within 10 seconds
+- **NFR-1.2.3**: The system SHALL maintain stable connections with <5% packet loss
+- **NFR-1.2.4**: Connection recovery SHALL complete within 15 seconds after disruption
+- **NFR-1.2.5**: The system SHALL support 8 simultaneous connections without performance impact
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| NSEC-01 | No persistent storage of encryption keys | Critical |
-| NSEC-02 | No external dependencies for cryptographic operations | High |
-| NSEC-03 | All security features must be verifiable | High |
-| NSEC-04 | No data collection or analytics | High |
-| NSEC-05 | Support encrypted local storage for messages when retention enabled | Medium |
-| NSEC-06 | Clear memory containing sensitive data after use | High |
+#### NFR-1.3: UI Responsiveness
+- **NFR-1.3.1**: UI interactions SHALL respond within 100ms
+- **NFR-1.3.2**: Message display SHALL update within 200ms of receipt
+- **NFR-1.3.3**: Channel switching SHALL complete within 300ms
+- **NFR-1.3.4**: App startup SHALL complete within 3 seconds
+- **NFR-1.3.5**: Settings changes SHALL apply within 500ms
 
-### Performance
+### NFR-2: Reliability Requirements
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| NPERF-01 | Battery usage <5% per hour in background | High |
-| NPERF-02 | Message delivery latency <1s for direct connections | High |
-| NPERF-03 | App startup time <2s on mid-range devices | Medium |
-| NPERF-04 | Support mesh networks with 50+ nodes | Medium |
-| NPERF-05 | Memory usage <100MB during active use | Medium |
-| NPERF-06 | Support multi-hop message routing up to 7 hops | High |
+#### NFR-2.1: System Availability
+- **NFR-2.1.1**: The system SHALL maintain 99.9% uptime during normal operation
+- **NFR-2.1.2**: The system SHALL recover from crashes within 5 seconds
+- **NFR-2.1.3**: The system SHALL handle network disruptions gracefully
+- **NFR-2.1.4**: The system SHALL maintain functionality with intermittent connectivity
+- **NFR-2.1.5**: The system SHALL support continuous operation for 24+ hours
 
-### Usability
+#### NFR-2.2: Data Integrity
+- **NFR-2.2.1**: Message delivery SHALL have 99.99% accuracy
+- **NFR-2.2.2**: The system SHALL detect and prevent message corruption
+- **NFR-2.2.3**: Cryptographic operations SHALL have 100% accuracy
+- **NFR-2.2.4**: The system SHALL maintain data consistency across restarts
+- **NFR-2.2.5**: The system SHALL provide message delivery confirmations
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| USAB-01 | Interface must be intuitive for IRC/terminal users | High |
-| USAB-02 | Support offline operation with all features | Critical |
-| USAB-03 | Provide clear error messages and status indicators | High |
-| USAB-04 | Support standard accessibility features | Medium |
-| USAB-05 | Documentation for all commands and features | High |
-| USAB-06 | Adaptive UI for different device form factors | Medium |
+#### NFR-2.3: Error Handling
+- **NFR-2.3.1**: The system SHALL handle all error conditions gracefully
+- **NFR-2.3.2**: Error messages SHALL be user-friendly and actionable
+- **NFR-2.3.3**: The system SHALL log errors for debugging purposes
+- **NFR-2.3.4**: Critical errors SHALL not cause data loss
+- **NFR-2.3.5**: The system SHALL provide error recovery mechanisms
 
-### Reliability
+### NFR-3: Security Requirements
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| REL-01 | Graceful handling of Bluetooth disconnections | High |
-| REL-02 | Automatic reconnection attempts | High |
-| REL-03 | Persistence of user settings | Medium |
-| REL-04 | Graceful degradation in low-battery scenarios | High |
-| REL-05 | Message retry mechanism for failed deliveries | Medium |
-| REL-06 | Robust handling of app lifecycle events | High |
+#### NFR-3.1: Encryption Standards
+- **NFR-3.1.1**: All cryptographic algorithms SHALL use industry-standard implementations
+- **NFR-3.1.2**: Key generation SHALL use cryptographically secure random sources
+- **NFR-3.1.3**: The system SHALL implement perfect forward secrecy
+- **NFR-3.1.4**: Encryption keys SHALL be minimum 256 bits in length
+- **NFR-3.1.5**: The system SHALL resist known cryptographic attacks
 
-## Technical Requirements
+#### NFR-3.2: Privacy Protection
+- **NFR-3.2.1**: The system SHALL not transmit personally identifiable information
+- **NFR-3.2.2**: User activities SHALL not be trackable by third parties
+- **NFR-3.2.3**: The system SHALL support anonymous usage
+- **NFR-3.2.4**: Metadata SHALL be minimized in all communications
+- **NFR-3.2.5**: The system SHALL support emergency data wiping
 
-### Development Environment
+#### NFR-3.3: Authentication Security
+- **NFR-3.3.1**: Peer authentication SHALL use cryptographic proofs
+- **NFR-3.3.2**: The system SHALL prevent impersonation attacks
+- **NFR-3.3.3**: Channel access SHALL require cryptographic verification
+- **NFR-3.3.4**: The system SHALL detect and prevent replay attacks
+- **NFR-3.3.5**: Authentication failures SHALL be logged and monitored
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| DEV-01 | Flutter SDK (latest stable release) | High |
-| DEV-02 | Dart SDK (latest stable release) | High |
-| DEV-03 | Android Studio / VS Code with Flutter plugins | High |
-| DEV-04 | Git version control | High |
-| DEV-05 | CI/CD pipeline for automated testing | Medium |
-| DEV-06 | Documentation generation tools | Medium |
+### NFR-4: Usability Requirements
 
-### Dependencies
+#### NFR-4.1: User Experience
+- **NFR-4.1.1**: The interface SHALL be intuitive for IRC-familiar users
+- **NFR-4.1.2**: New users SHALL be able to send messages within 2 minutes
+- **NFR-4.1.3**: The system SHALL provide helpful onboarding guidance
+- **NFR-4.1.4**: Error messages SHALL be clear and actionable
+- **NFR-4.1.5**: The interface SHALL follow platform-specific design guidelines
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| DEP-01 | flutter_blue_plus: ^1.31.7+ for BLE operations | High |
-| DEP-02 | cryptography: ^2.7.0+ for encryption | High |
-| DEP-03 | hive: ^2.2.3+ for local storage | High |
-| DEP-04 | provider/riverpod for state management | High |
-| DEP-05 | permission_handler: ^11.2.0+ for permissions | High |
-| DEP-06 | archive: ^3.4.9+ for compression | Medium |
+#### NFR-4.2: Accessibility
+- **NFR-4.2.1**: The system SHALL support screen readers and assistive technologies
+- **NFR-4.2.2**: The interface SHALL provide high contrast mode
+- **NFR-4.2.3**: Text SHALL be scalable for vision-impaired users
+- **NFR-4.2.4**: The system SHALL support keyboard-only navigation
+- **NFR-4.2.5**: Color SHALL not be the only means of conveying information
 
-### Code Quality
+#### NFR-4.3: Internationalization
+- **NFR-4.3.1**: The system SHALL support Unicode text input and display
+- **NFR-4.3.2**: The interface SHALL be localizable to multiple languages
+- **NFR-4.3.3**: Date and time formats SHALL respect user locale settings
+- **NFR-4.3.4**: The system SHALL handle right-to-left text properly
+- **NFR-4.3.5**: Character encoding SHALL be consistent across platforms
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| CQ-01 | Comprehensive unit test coverage (>80%) | High |
-| CQ-02 | Integration tests for critical paths | High |
-| CQ-03 | Consistent code style following Flutter conventions | Medium |
-| CQ-04 | Code documentation for all public APIs | High |
-| CQ-05 | Static code analysis with lint rules | Medium |
-| CQ-06 | Performance profiling for critical sections | Medium |
+### NFR-5: Compatibility Requirements
 
-## Platform-Specific Requirements
+#### NFR-5.1: Protocol Compatibility
+- **NFR-5.1.1**: The system SHALL maintain 100% binary protocol compatibility with iOS BitChat
+- **NFR-5.1.2**: The system SHALL maintain 100% binary protocol compatibility with Android BitChat
+- **NFR-5.1.3**: Message formats SHALL be identical across all platforms
+- **NFR-5.1.4**: Encryption implementations SHALL be interoperable
+- **NFR-5.1.5**: The system SHALL support mixed-platform mesh networks
 
-### iOS Requirements
+#### NFR-5.2: Platform Support
+- **NFR-5.2.1**: The system SHALL support iOS 14.0 and later
+- **NFR-5.2.2**: The system SHALL support Android API level 26 (8.0) and later
+- **NFR-5.2.3**: The system SHALL support macOS 11.0 and later
+- **NFR-5.2.4**: The system SHALL support Windows 10 version 1903 and later
+- **NFR-5.2.5**: The system SHALL support Ubuntu 20.04 and later Linux distributions
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| IOS-01 | Info.plist configuration for Bluetooth permissions | High |
-| IOS-02 | NSBluetoothAlwaysUsageDescription | High |
-| IOS-03 | Background modes for Bluetooth | High |
-| IOS-04 | Support for iOS platform channels | High |
-| IOS-05 | MultipeerConnectivity integration for WiFi Direct | Medium |
+#### NFR-5.3: Bluetooth Compatibility
+- **NFR-5.3.1**: The system SHALL support Bluetooth 4.0 LE and later
+- **NFR-5.3.2**: The system SHALL use identical BLE service and characteristic UUIDs
+- **NFR-5.3.3**: The system SHALL support standard BLE MTU sizes (20-512 bytes)
+- **NFR-5.3.4**: The system SHALL implement dual central/peripheral roles
+- **NFR-5.3.5**: The system SHALL handle platform-specific BLE limitations
 
-### Android Requirements
+### NFR-6: Scalability Requirements
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| AND-01 | Bluetooth permissions in AndroidManifest | High |
-| AND-02 | Location permissions (required for BLE scanning) | High |
-| AND-03 | Foreground service implementation | High |
-| AND-04 | Support for Android platform channels | High |
-| AND-05 | WiFi P2P API integration for WiFi Direct | Medium |
-| AND-06 | Battery optimization whitelist | High |
+#### NFR-6.1: Network Scalability
+- **NFR-6.1.1**: The system SHALL support mesh networks up to 100 peers
+- **NFR-6.1.2**: Routing tables SHALL scale to 1000+ entries
+- **NFR-6.1.3**: The system SHALL handle network partitioning and merging
+- **NFR-6.1.4**: Message caching SHALL support 10,000+ messages per channel
+- **NFR-6.1.5**: The system SHALL optimize for battery life in large networks
 
-### Desktop Requirements
+#### NFR-6.2: Data Scalability
+- **NFR-6.2.1**: The system SHALL support 100+ channels per user
+- **NFR-6.2.2**: Message history SHALL support 100,000+ messages
+- **NFR-6.2.3**: The system SHALL handle large message attachments (future)
+- **NFR-6.2.4**: Peer lists SHALL scale to 1000+ known peers
+- **NFR-6.2.5**: The system SHALL implement efficient data pruning
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| DSK-01 | Native Bluetooth stack integration | Medium |
-| DSK-02 | Desktop-appropriate UI layouts | Medium |
-| DSK-03 | Keyboard shortcut support | Low |
-| DSK-04 | System tray integration | Low |
-| DSK-05 | Desktop notifications | Low |
+#### NFR-6.3: Resource Scalability
+- **NFR-6.3.1**: Memory usage SHALL remain under 100MB during normal operation
+- **NFR-6.3.2**: Storage usage SHALL be configurable with retention policies
+- **NFR-6.3.3**: CPU usage SHALL remain under 5% during idle periods
+- **NFR-6.3.4**: Battery usage SHALL be under 5% per hour of active use
+- **NFR-6.3.5**: The system SHALL optimize resource usage based on device capabilities
 
-## Testing Requirements
+### NFR-7: Maintainability Requirements
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| TEST-01 | Unit tests for all core components | High |
-| TEST-02 | Integration tests for user flows | High |
-| TEST-03 | Cross-platform compatibility tests | Critical |
-| TEST-04 | Performance benchmark tests | Medium |
-| TEST-05 | Battery consumption tests | High |
-| TEST-06 | Mesh network simulation tests | Medium |
-| TEST-07 | Security vulnerability tests | High |
+#### NFR-7.1: Code Quality
+- **NFR-7.1.1**: Code coverage SHALL be minimum 80% for unit tests
+- **NFR-7.1.2**: The codebase SHALL follow Flutter/Dart style guidelines
+- **NFR-7.1.3**: All public APIs SHALL be documented
+- **NFR-7.1.4**: The system SHALL use dependency injection for testability
+- **NFR-7.1.5**: Code complexity SHALL be monitored and controlled
 
-## Documentation Requirements
+#### NFR-7.2: Documentation
+- **NFR-7.2.1**: All features SHALL have comprehensive documentation
+- **NFR-7.2.2**: API documentation SHALL be auto-generated from code
+- **NFR-7.2.3**: Architecture decisions SHALL be documented
+- **NFR-7.2.4**: Deployment procedures SHALL be documented
+- **NFR-7.2.5**: Troubleshooting guides SHALL be maintained
 
-| ID | Requirement | Priority |
-|----|------------|----------|
-| DOC-01 | API documentation | High |
-| DOC-02 | User guide with command reference | High |
-| DOC-03 | Architecture overview | Medium |
-| DOC-04 | Protocol specification | High |
-| DOC-05 | Security model documentation | High |
-| DOC-06 | Implementation roadmap | Medium |
-| DOC-07 | Testing strategy documentation | Medium |
+#### NFR-7.3: Testing
+- **NFR-7.3.1**: The system SHALL have comprehensive unit test coverage
+- **NFR-7.3.2**: Integration tests SHALL verify cross-platform compatibility
+- **NFR-7.3.3**: Performance tests SHALL validate NFR compliance
+- **NFR-7.3.4**: Security tests SHALL verify cryptographic implementations
+- **NFR-7.3.5**: Automated testing SHALL be integrated into CI/CD pipeline
 
-## Project Constraints
+## Acceptance Criteria
 
-| ID | Constraint | Description |
-|----|-----------|-------------|
-| CON-01 | Protocol Compatibility | Must maintain byte-for-byte protocol compatibility |
-| CON-02 | Open Source | Must be released under public domain license |
-| CON-03 | No External Dependencies | No external services or cloud infrastructure |
-| CON-04 | Privacy | No data collection or user tracking |
-| CON-05 | Security | No compromises on encryption or privacy features |
-| CON-06 | Backwards Compatibility | Must work with existing BitChat iOS/Android apps |
+### AC-1: Protocol Compatibility Verification
+- **AC-1.1**: Flutter implementation SHALL successfully exchange messages with iOS BitChat
+- **AC-1.2**: Flutter implementation SHALL successfully exchange messages with Android BitChat
+- **AC-1.3**: Mixed-platform mesh networks SHALL operate without protocol errors
+- **AC-1.4**: All message types SHALL be compatible across platforms
+- **AC-1.5**: Encryption handshakes SHALL succeed between all platform combinations
 
-## Out of Scope
+### AC-2: Feature Completeness
+- **AC-2.1**: All functional requirements SHALL be implemented and tested
+- **AC-2.2**: All IRC-style commands SHALL be functional
+- **AC-2.3**: Channel management SHALL work identically to reference implementations
+- **AC-2.4**: Security features SHALL provide equivalent protection
+- **AC-2.5**: User interface SHALL provide equivalent functionality
 
-- Advanced file transfer capabilities (deferred to future release)
-- Audio/video messaging (deferred to future release)
-- Group video calls (deferred to future release)
-- Custom plugin system (deferred to future release)
-- Advanced bot capabilities (deferred to future release)
+### AC-3: Performance Validation
+- **AC-3.1**: All performance requirements SHALL be met under normal conditions
+- **AC-3.2**: System SHALL remain responsive under maximum load
+- **AC-3.3**: Battery usage SHALL not exceed specified limits
+- **AC-3.4**: Memory usage SHALL remain within specified bounds
+- **AC-3.5**: Network performance SHALL meet latency and throughput requirements
 
-## Assumptions
+### AC-4: Security Validation
+- **AC-4.1**: All cryptographic implementations SHALL pass security audits
+- **AC-4.2**: The system SHALL resist common attack vectors
+- **AC-4.3**: Privacy requirements SHALL be verified through testing
+- **AC-4.4**: Emergency wipe functionality SHALL completely remove sensitive data
+- **AC-4.5**: Key management SHALL follow security best practices
 
-- Users will have Bluetooth LE capable devices
-- Platform permissions will be granted by users
-- Protocol specifications from iOS/Android will remain stable
-- Flutter's Bluetooth libraries will remain maintained and compatible
-- No major changes to platform Bluetooth APIs
+### AC-5: Cross-Platform Validation
+- **AC-5.1**: The system SHALL function identically on all supported platforms
+- **AC-5.2**: Platform-specific features SHALL be properly abstracted
+- **AC-5.3**: UI SHALL adapt appropriately to platform conventions
+- **AC-5.4**: Performance SHALL be consistent across platforms
+- **AC-5.5**: Deployment SHALL succeed on all target platforms
 
-## Risks and Mitigations
+## Compatibility Requirements with Existing Implementations
 
-| Risk | Impact | Probability | Mitigation |
-|------|--------|------------|------------|
-| Platform BLE API changes | High | Low | Abstract platform-specific code |
-| Protocol incompatibility | Critical | Low | Rigorous compatibility testing |
-| Performance issues | Medium | Medium | Early performance profiling |
-| Battery drain | High | Medium | Adaptive power management |
-| Security vulnerabilities | High | Low | Regular security audits |
-| Cross-platform inconsistencies | Medium | Medium | Platform-specific testing |
+### iOS BitChat Compatibility
+- **Binary Protocol**: Must use identical packet formats and message types
+- **Encryption**: Must implement identical Noise Protocol XX pattern
+- **BLE Services**: Must use same service and characteristic UUIDs
+- **Message Routing**: Must implement identical TTL-based routing algorithm
+- **Channel Security**: Must support same password-based channel protection
 
-## Glossary
+### Android BitChat Compatibility
+- **Component Architecture**: Should adapt Android's component-based design patterns
+- **Async Operations**: Should use similar async/await patterns as Android coroutines
+- **State Management**: Should provide similar reactive state management
+- **Error Handling**: Should implement similar error handling and recovery
+- **Background Processing**: Should provide equivalent background operation capabilities
 
-| Term | Definition |
-|------|------------|
-| BLE | Bluetooth Low Energy |
-| TTL | Time To Live (hop count for message routing) |
-| RSSI | Received Signal Strength Indicator |
-| MTU | Maximum Transmission Unit |
-| AES-GCM | Advanced Encryption Standard in Galois/Counter Mode |
-| X25519 | Elliptic Curve Diffie-Hellman key exchange algorithm |
-| Ed25519 | Edwards-curve Digital Signature Algorithm |
-| Mesh Network | Decentralized network topology where devices relay messages |
+### Cross-Platform Interoperability
+- **Mixed Networks**: Must support mesh networks with iOS, Android, and Flutter clients
+- **Protocol Versioning**: Must handle protocol version negotiation
+- **Feature Parity**: Must provide equivalent feature set across all platforms
+- **Performance Parity**: Must achieve comparable performance metrics
+- **Security Equivalence**: Must provide identical security guarantees
 
----
+## Conclusion
 
-This document serves as the definitive reference for BitChat Flutter project requirements and will be updated as needed during the development lifecycle.
+These requirements define a comprehensive specification for BitChat Flutter that ensures complete compatibility with existing implementations while leveraging Flutter's cross-platform capabilities. The implementation must prioritize protocol compatibility, security, and user experience while maintaining the decentralized, privacy-focused nature of the BitChat ecosystem.
+
+Success will be measured by the ability to seamlessly integrate Flutter clients into existing BitChat mesh networks, providing users with a consistent experience regardless of their chosen platform while maintaining the highest standards of security and privacy.

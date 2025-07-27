@@ -1,92 +1,89 @@
-# BitChat Flutter - Context Engineering Template
+# BitChat Flutter - Project Context
 
-**Version:** 0.1.0  
-**Last Updated:** July 11, 2025
+**Version:** 1.0  
+**Last Updated:** July 26, 2025
 
 ## Project Overview
 
-BitChat Flutter is a decentralized peer-to-peer messaging application working over Bluetooth Low Energy (BLE) mesh networks, inspired by the original iOS and Android implementations. It provides encrypted and ephemeral communication without relying on internet infrastructure.
+BitChat Flutter is a decentralized peer-to-peer messaging application that operates over Bluetooth Low Energy (BLE) mesh networks without requiring internet access or centralized servers. This Flutter implementation maintains 100% binary protocol compatibility with the original iOS and Android BitChat implementations.
 
 **Original Projects:**
 - iOS/macOS: https://github.com/permissionlesstech/bitchat  
 - Android: https://github.com/permissionlesstech/bitchat-android
 
-## Folder Structure
+**Key Features:**
+- Decentralized mesh networking over Bluetooth LE
+- End-to-end encryption with X25519 + AES-256-GCM
+- Channel-based group messaging with optional passwords
+- Store & forward messaging for offline peers
+- IRC-style command interface
+- Cross-platform support (iOS, Android, Desktop)
+
+## Current Project Structure
 
 ```
-bitchat_flutter/
-├── docs/
-│   ├── ARCHITECTURE.md (done)
-│   ├── PROTOCOL_SPEC.md (done)
-│   ├── SECURITY_SPEC.md (done)
-│   ├── UI_REQUIREMENTS.md (done)
-│   ├── BLUETOOTH_IMPLEMENTATION.md (done)
-│   ├── ENCRYPTION_SPEC.md (done)
-│   ├── COMMANDS_REFERENCE.md (done)
-│   └── PLATFORM_COMPATIBILITY.md (done)
-├── context/
-│   ├── project_requirements.md
-│   ├── technical_specifications.md
-│   ├── feature_matrix.md
-│   ├── implementation_roadmap.md
-│   ├── testing_strategy.md
-│   └── deployment_guide.md
-├── reference/
-│   ├── ios_codebase_analysis.md
-│   ├── android_codebase_analysis.md
-│   ├── protocol_compatibility.md
-│   └── third_party_libraries.md
-├── bitchat/
-│   ├── pubspec.yaml
-│   ├── analysis_options.yaml
-│   ├── lib/
-│   │   ├── main.dart
-│   │   ├── core/
-│   │   │   ├── constants/
-│   │   │   ├── utils/
-│   │   │   ├── services/
-│   │   │   └── models/
-│   │   ├── features/
-│   │   │   ├── chat/
-│   │   │   ├── mesh/
-│   │   │   ├── encryption/
-│   │   │   ├── channels/
-│   │   │   └── settings/
-│   │   ├── shared/
-│   │   │   ├── widgets/
-│   │   │   ├── themes/
-│   │   │   └── extensions/
-│   │   └── presentation/
-│   │       ├── screens/
-│   │       ├── providers/
-│   │       └── navigation/
-│   ├── test/
-│   ├── android/
-│   ├── ios/
-│   ├── linux/
-│   ├── macos/
-│   └── windows/
-├── protocols/
-│   ├── binary_protocol.md
-│   ├── message_types.md
-│   ├── packet_structure.md
-│   ├── encryption_flow.md
-│   └── mesh_routing.md
-├── examples/
-│   ├── sample_conversations.md
-│   ├── command_examples.md
-│   └── protocol_examples.md
-├── assets/
-│   ├── ui_mockups/
-│   ├── protocol_diagrams/
-│   └── architecture_diagrams/
-├── scripts/
-│   ├── setup.sh
+bitchat-flutter/
+├── .git/                           # Git repository
+├── .kiro/                          # Kiro IDE configuration
+│   ├── specs/                      # Feature specifications
+│   └── steering/                   # AI steering rules
+├── docs/                           # Technical documentation
+│   ├── ARCHITECTURE.md             # System architecture overview
+│   ├── BLUETOOTH_IMPLEMENTATION.md # BLE mesh networking details
+│   ├── COMMANDS_REFERENCE.md       # IRC-style commands reference
+│   ├── ENCRYPTION_SPEC.md          # Cryptographic implementation
+│   ├── PLATFORM_COMPATIBILITY.md  # Cross-platform considerations
+│   ├── PROTOCOL_SPEC.md            # Binary protocol specification
+│   ├── SECURITY_SPEC.md            # Security model and cryptography
+│   └── UI_REQUIREMENTS.md          # User interface specifications
+├── context/                        # Project context and requirements
+│   ├── deployment_guide.md         # Build and deployment procedures
+│   ├── feature_matrix.md           # Feature comparison across platforms
+│   ├── implementation_roadmap.md   # Development timeline and phases
+│   ├── project_requirements.md     # Functional and non-functional requirements
+│   ├── technical_specifications.md # Technical specifications and constraints
+│   └── testing_strategy.md         # Testing approach and requirements
+├── reference/                      # Reference implementations
+│   ├── temp_android/               # Android BitChat reference code
+│   └── temp_ios/                   # iOS BitChat reference code
+├── bitchat/                        # Main Flutter application
+│   ├── lib/                        # Dart source code
+│   │   ├── main.dart              # Application entry point
+│   │   ├── core/                  # Core business logic
+│   │   ├── features/              # Feature-based modules
+│   │   ├── presentation/          # UI layer
+│   │   └── shared/                # Shared components
+│   ├── test/                      # Unit tests
+│   ├── integration_test/          # Integration tests
+│   ├── android/                   # Android platform code
+│   ├── ios/                       # iOS platform code
+│   ├── linux/                     # Linux platform code
+│   ├── macos/                     # macOS platform code
+│   ├── windows/                   # Windows platform code
+│   ├── pubspec.yaml              # Dependencies and metadata
+│   └── analysis_options.yaml     # Dart analysis configuration
+├── assets/                        # Design assets and diagrams
+│   ├── architecture_diagrams/     # System architecture diagrams
+│   ├── protocol_diagrams/         # Protocol flow diagrams
+│   └── ui_mockups/               # UI design mockups
+├── scripts/                       # Build and automation scripts
+│   ├── automated_link_checker.py
 │   ├── build.sh
-│   └── test.sh
-├── README.md
-├── CONTRIBUTING.md
-└── LICENSE
+│   ├── documentation_*.py         # Documentation maintenance scripts
+│   ├── setup.sh
+│   ├── test.sh
+│   └── validate_links.py
+├── README.md                      # Project overview and quick start
+├── CONTRIBUTING.md                # Contribution guidelines
+├── DEVELOPER_SETUP.md             # Development environment setup
+├── DEVELOPMENT_WORKFLOW.md        # Git workflow and development processes
+├── DOCUMENTATION_INDEX.md         # Comprehensive documentation index
+├── DOCUMENTATION_MAINTENANCE.md   # Documentation maintenance guide
+├── CODE_STYLE_GUIDE.md           # Coding standards and conventions
+├── API_DOCUMENTATION_STANDARDS.md # API documentation guidelines
+├── REFERENCE_ANALYSIS.md          # Analysis of iOS/Android implementations
+├── bitchat_flutter_context.md    # This context file
+└── LICENSE                       # Public domain license
 ```
 
 ## Core Features
@@ -138,7 +135,7 @@ dependencies:
   riverpod: ^2.4.9
   
   # Bluetooth
-  flutter_blue_plus: ^1.31.7
+  flutter_blue_plus: ^1.35.5
   
   # Encryption
   crypto: ^3.0.3
@@ -161,7 +158,7 @@ dependencies:
   archive: ^3.4.9
   
   # Permissions
-  permission_handler: ^11.2.0
+  permission_handler: ^12.0.1
   
 dev_dependencies:
   flutter_test:
@@ -315,26 +312,70 @@ The Flutter implementation must maintain 100% binary protocol compatibility with
 
 ## Getting Started
 
+For detailed setup instructions, see [DEVELOPER_SETUP.md](DEVELOPER_SETUP.md).
+
+### Quick Start
 1. **Setup Development Environment**
    ```bash
+   cd bitchat
    flutter doctor
    flutter pub get
    ```
 
 2. **Generate Required Files**
    ```bash
-   flutter packages pub run build_runner build
+   flutter packages pub run build_runner build --delete-conflicting-outputs
    ```
 
 3. **Run Tests**
    ```bash
    flutter test
+   flutter test integration_test
    ```
 
 4. **Launch App**
    ```bash
-   flutter run
+   flutter run --hot
    ```
+
+### Development Commands
+```bash
+# Development
+flutter run --hot              # Hot reload development
+flutter analyze               # Static code analysis
+dart format .                 # Code formatting
+
+# Building
+flutter build apk --debug     # Android debug build
+flutter build ios --debug --no-codesign  # iOS debug build
+flutter build windows --debug # Windows debug build
+
+# Quality Checks
+flutter doctor -v             # Environment verification
+flutter test --coverage      # Test with coverage
+```
+
+## Documentation Navigation
+
+For comprehensive documentation, see [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md).
+
+### Key Documentation Files
+- **[README.md](README.md)** - Project overview and quick start
+- **[DEVELOPER_SETUP.md](DEVELOPER_SETUP.md)** - Complete development environment setup
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - How to contribute to the project
+- **[CODE_STYLE_GUIDE.md](CODE_STYLE_GUIDE.md)** - Coding standards and best practices
+- **[REFERENCE_ANALYSIS.md](REFERENCE_ANALYSIS.md)** - Understanding the iOS/Android implementations
+
+### Technical Documentation
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture overview
+- **[docs/PROTOCOL_SPEC.md](docs/PROTOCOL_SPEC.md)** - Binary protocol specification
+- **[docs/SECURITY_SPEC.md](docs/SECURITY_SPEC.md)** - Security model and cryptography
+- **[docs/BLUETOOTH_IMPLEMENTATION.md](docs/BLUETOOTH_IMPLEMENTATION.md)** - BLE mesh networking
+
+### Project Context
+- **[context/project_requirements.md](context/project_requirements.md)** - Functional requirements
+- **[context/technical_specifications.md](context/technical_specifications.md)** - Technical specs
+- **[context/implementation_roadmap.md](context/implementation_roadmap.md)** - Development timeline
 
 ## Important Notes
 
@@ -354,4 +395,4 @@ The Flutter implementation must maintain 100% binary protocol compatibility with
 
 ---
 
-This template provides the complete context needed for Claude Code to build a faithful Flutter replica of BitChat while maintaining protocol compatibility and security standards.
+This context file provides an overview of the BitChat Flutter project structure and key information for developers and AI assistants working on the project.

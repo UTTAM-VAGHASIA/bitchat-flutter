@@ -1,161 +1,501 @@
-# BitChat Feature Matrix
+# BitChat Flutter - Feature Matrix
 
-**Version:** 0.1.0  
-**Last Updated:** July 11, 2025
+## Introduction
 
-## Overview
+This document provides a comprehensive comparison of features across BitChat implementations, analyzing the mature Android (70+ files) and iOS (50+ files) implementations to guide Flutter development priorities. The matrix identifies feature parity requirements, implementation complexity, and development phases for the Flutter version.
 
-This document provides a comprehensive comparison of features across the BitChat implementations for iOS, Android, and Flutter. This matrix helps ensure feature parity and highlights platform-specific capabilities.
+## Feature Comparison Overview
 
-## Core Features
+### Implementation Status Legend
+- ✅ **Implemented**: Feature is fully implemented and tested
+- 🔄 **In Progress**: Feature is currently being developed
+- 🎯 **Planned**: Feature is planned for Flutter implementation
+- ⚠️ **Limited**: Feature has platform-specific limitations
+- ❌ **Not Supported**: Feature is not supported on this platform
+- 🔮 **Future**: Feature planned for future versions
 
-| Feature | iOS | Android | Flutter | Notes |
-|---------|-----|---------|---------|-------|
-| **Mesh Networking** |||||
-| BLE Peer Discovery | ✓ | ✓ | ✓ | Identical scanning methodology |
-| Multi-hop Message Relay | ✓ | ✓ | ✓ | TTL-based, max 7 hops |
-| Store & Forward | ✓ | ✓ | ✓ | 24-hour retention |
-| Maximum Network Size | 1,024 peers | 1,024 peers | 1,024 peers | Theoretical limit |
-| **Encryption** |||||
-| X25519 Key Exchange | ✓ | ✓ | ✓ | RFC 7748 compliant |
-| AES-256-GCM | ✓ | ✓ | ✓ | NIST SP 800-38D |
-| Ed25519 Signatures | ✓ | ✓ | ✓ | RFC 8032 |
-| Argon2id (Channels) | ✓ | ✓ | ✓ | Memory: 64MB, Iterations: 3, Parallelism: 4 |
-| Forward Secrecy | ✓ | ✓ | ✓ | New keys each session |
-| Emergency Wipe | ✓ | ✓ | ✓ | Triple-tap to clear all data |
-| **Messaging** |||||
-| Channel-Based Messaging | ✓ | ✓ | ✓ | Unlimited channels |
-| Private Messaging | ✓ | ✓ | ✓ | End-to-end encrypted |
-| IRC-Style Commands | ✓ | ✓ | ✓ | Complete command set |
-| Message Retention Control | ✓ | ✓ | ✓ | Owner-controlled |
-| Channel Password | ✓ | ✓ | ✓ | Argon2id derived |
-| @Mentions | ✓ | ✓ | ✓ | With autocomplete |
-| **Performance** |||||
-| LZ4 Compression | ✓ | ✓ | ✓ | For messages >100 bytes |
-| Adaptive Power Modes | ✓ | ✓ | ✓ | 4 power modes |
-| Bloom Filters | ✓ | ✓ | ✓ | For duplicate detection |
-| Message Aggregation | ✓ | ✓ | ✓ | Batch small messages |
-| **Privacy** |||||
-| No Registration | ✓ | ✓ | ✓ | No accounts or phone numbers |
-| Ephemeral Messages | ✓ | ✓ | ✓ | Default behavior |
-| Cover Traffic | ✓ | ✓ | ✓ | Random delays and dummy messages |
-| Timing Obfuscation | ✓ | ✓ | ✓ | 50-500ms random delays |
+## Core Messaging Features
 
-## Transport Features
+### Basic Messaging
 
-| Feature | iOS | Android | Flutter | Notes |
-|---------|-----|---------|---------|-------|
-| **Bluetooth LE** |||||
-| Central Role | ✓ | ✓ | ✓ | Scanning and connecting |
-| Peripheral Role | ✓ | ✓ | ✓ | Advertising and accepting connections |
-| Maximum MTU | 512 bytes | 512 bytes | 512 bytes | Negotiated at connection |
-| Packet Fragmentation | ✓ | ✓ | ✓ | 491-byte fragments |
-| **WiFi Direct** |||||
-| Basic Implementation | ✓ | ✓ | Planned (v1.0) | High bandwidth alternative |
-| iOS MultipeerConnectivity | ✓ | N/A | Planned (v1.0) | iOS/macOS specific |
-| Android WiFi P2P | N/A | ✓ | Planned (v1.0) | Android specific |
-| Cross-Platform Support | ✓* | ✓* | Planned (v1.0) | *Limited to same platform |
-| Transport Selection | ✓ | ✓ | Planned (v1.0) | Based on battery/message size |
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Text Messages** | ✅ | ✅ | 🎯 | P0 | Low | UTF-8 support, 4096 char limit |
+| **Message History** | ✅ | ✅ | 🎯 | P0 | Medium | Local persistence with Hive |
+| **Message Timestamps** | ✅ | ✅ | 🎯 | P0 | Low | ISO 8601 format |
+| **Message Status** | ✅ | ✅ | 🎯 | P0 | Medium | Sending/Sent/Delivered/Failed |
+| **Message Ordering** | ✅ | ✅ | 🎯 | P0 | Medium | Chronological with conflict resolution |
+| **Unicode Support** | ✅ | ✅ | 🎯 | P0 | Low | Full UTF-8 character set |
+| **Message Search** | ✅ | ✅ | 🎯 | P1 | Medium | Local search with indexing |
+| **Message Export** | ✅ | ⚠️ | 🎯 | P2 | Medium | JSON/CSV export formats |
 
-## Battery Optimization
+### Advanced Messaging
 
-| Feature | iOS | Android | Flutter | Notes |
-|---------|-----|---------|---------|-------|
-| **Power Modes** |||||
-| Performance Mode | ✓ | ✓ | ✓ | >60% battery or charging |
-| Balanced Mode | ✓ | ✓ | ✓ | 30-60% battery |
-| Power Saver Mode | ✓ | ✓ | ✓ | 10-30% battery |
-| Ultra Low Power Mode | ✓ | ✓ | ✓ | <10% battery |
-| **Scan Parameters** |||||
-| Performance | 3s scan, 2s pause | 3s scan, 2s pause | 3s scan, 2s pause | 20 connections max |
-| Balanced | 2s scan, 3s pause | 2s scan, 3s pause | 2s scan, 3s pause | 10 connections max |
-| Power Saver | 1s scan, 8s pause | 1s scan, 8s pause | 1s scan, 8s pause | 5 connections max |
-| Ultra Low Power | 0.5s scan, 20s pause | 0.5s scan, 20s pause | 0.5s scan, 20s pause | 2 connections max |
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Message Editing** | ❌ | ❌ | ❌ | P3 | High | Not in protocol spec |
+| **Message Deletion** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Local deletion only |
+| **Message Reactions** | ❌ | ❌ | 🔮 | P4 | High | Future protocol extension |
+| **Message Threading** | ❌ | ❌ | 🔮 | P4 | High | Future protocol extension |
+| **Message Formatting** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Basic markdown support |
+| **Message Attachments** | ❌ | ❌ | 🔮 | P4 | High | Future protocol extension |
+| **Voice Messages** | ❌ | ❌ | 🔮 | P4 | High | Future protocol extension |
+| **Message Drafts** | ✅ | ✅ | 🎯 | P2 | Low | Local draft persistence |
 
-## UI Features
+## Channel Management Features
 
-| Feature | iOS | Android | Flutter | Notes |
-|---------|-----|---------|---------|-------|
-| Terminal-Style Interface | ✓ | ✓ | ✓ | IRC-like appearance |
-| Dark Mode | ✓ | ✓ | ✓ | Default theme |
-| Light Mode | ✓ | ✓ | ✓ | Optional |
-| Adaptive Layout | ✓ | ✓ | ✓ | Responsive to screen sizes |
-| Haptic Feedback | ✓ | ✓ | ✓ | For interactions |
-| RSSI Indicators | ✓ | ✓ | ✓ | Signal strength visualization |
-| Accessibility Support | ✓ | ✓ | ✓ | Screen readers, contrast |
+### Basic Channel Operations
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Channel Creation** | ✅ | ✅ | 🎯 | P0 | Medium | Password-protected channels |
+| **Channel Joining** | ✅ | ✅ | 🎯 | P0 | Medium | Password verification |
+| **Channel Leaving** | ✅ | ✅ | 🎯 | P0 | Low | Graceful departure |
+| **Channel Discovery** | ✅ | ✅ | 🎯 | P0 | Medium | Broadcast announcements |
+| **Channel List** | ✅ | ✅ | 🎯 | P0 | Low | Available channels display |
+| **Channel Persistence** | ✅ | ✅ | 🎯 | P0 | Medium | Remember joined channels |
+| **Channel Topics** | ✅ | ✅ | 🎯 | P1 | Low | Channel descriptions |
+| **Channel Member Count** | ✅ | ✅ | 🎯 | P1 | Low | Real-time member tracking |
+
+### Advanced Channel Features
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Channel Administration** | ✅ | ✅ | 🎯 | P1 | High | Creator privileges |
+| **Channel Moderation** | ⚠️ | ⚠️ | 🎯 | P2 | High | User removal, muting |
+| **Channel Password Change** | ✅ | ✅ | 🎯 | P1 | Medium | Admin-only operation |
+| **Channel Invitations** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Invite-only channels |
+| **Channel Roles** | ❌ | ❌ | 🔮 | P4 | High | Future protocol extension |
+| **Channel Permissions** | ⚠️ | ⚠️ | 🎯 | P2 | High | Read/write permissions |
+| **Channel Archiving** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Archive inactive channels |
+| **Channel Statistics** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Message counts, activity |
+
+## Peer-to-Peer Features
+
+### Direct Messaging
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Private Messages** | ✅ | ✅ | 🎯 | P0 | Medium | End-to-end encrypted |
+| **Contact Management** | ✅ | ✅ | 🎯 | P1 | Medium | Peer nickname storage |
+| **Conversation History** | ✅ | ✅ | 🎯 | P0 | Medium | Per-peer message history |
+| **Typing Indicators** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Real-time typing status |
+| **Read Receipts** | ✅ | ✅ | 🎯 | P1 | Medium | Message read confirmation |
+| **Delivery Receipts** | ✅ | ✅ | 🎯 | P1 | Medium | Message delivery confirmation |
+| **Presence Status** | ✅ | ✅ | 🎯 | P1 | Medium | Online/away/offline status |
+| **Last Seen** | ✅ | ✅ | 🎯 | P2 | Low | Last activity timestamp |
+
+### Peer Discovery
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Automatic Discovery** | ✅ | ✅ | 🎯 | P0 | High | BLE advertising/scanning |
+| **Manual Peer Addition** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | QR codes, peer IDs |
+| **Peer Verification** | ✅ | ✅ | 🎯 | P1 | High | Cryptographic fingerprints |
+| **Peer Blocking** | ✅ | ✅ | 🎯 | P2 | Medium | Block unwanted peers |
+| **Peer Favorites** | ⚠️ | ⚠️ | 🎯 | P3 | Low | Favorite peer list |
+| **Peer Search** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Search by nickname/ID |
+| **Peer Groups** | ❌ | ❌ | 🔮 | P4 | High | Future feature |
+| **Peer Profiles** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Extended peer information |
+
+## Bluetooth Mesh Networking
+
+### Core Mesh Features
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **BLE Advertising** | ✅ | ✅ | 🎯 | P0 | High | Platform-specific implementation |
+| **BLE Scanning** | ✅ | ✅ | 🎯 | P0 | High | Continuous peer discovery |
+| **Dual Role Operation** | ✅ | ✅ | 🎯 | P0 | High | Central + Peripheral modes |
+| **Connection Management** | ✅ | ✅ | 🎯 | P0 | High | Up to 8 simultaneous connections |
+| **Message Routing** | ✅ | ✅ | 🎯 | P0 | High | TTL-based multi-hop routing |
+| **Store & Forward** | ✅ | ✅ | 🎯 | P1 | High | Offline message caching |
+| **Network Topology** | ✅ | ✅ | 🎯 | P1 | Medium | Dynamic mesh topology |
+| **Route Optimization** | ✅ | ✅ | 🎯 | P2 | High | Optimal path selection |
+
+### Advanced Mesh Features
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Network Partitioning** | ✅ | ✅ | 🎯 | P1 | High | Handle network splits |
+| **Network Merging** | ✅ | ✅ | 🎯 | P1 | High | Merge split networks |
+| **Load Balancing** | ⚠️ | ⚠️ | 🎯 | P2 | High | Distribute message load |
+| **Congestion Control** | ⚠️ | ⚠️ | 🎯 | P2 | High | Handle network congestion |
+| **Quality of Service** | ⚠️ | ⚠️ | 🎯 | P3 | High | Message prioritization |
+| **Network Analytics** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Network performance metrics |
+| **Mesh Visualization** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Network topology display |
+| **Bridge Nodes** | ⚠️ | ⚠️ | 🔮 | P4 | High | Internet bridge capability |
+
+## Security and Encryption
+
+### Core Security Features
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **End-to-End Encryption** | ✅ | ✅ | 🎯 | P0 | High | X25519 + AES-256-GCM |
+| **Noise Protocol** | ✅ | ✅ | 🎯 | P0 | High | XX pattern implementation |
+| **Key Exchange** | ✅ | ✅ | 🎯 | P0 | High | Automated key negotiation |
+| **Forward Secrecy** | ✅ | ✅ | 🎯 | P0 | High | Session key rotation |
+| **Digital Signatures** | ✅ | ✅ | 🎯 | P0 | High | Ed25519 message signing |
+| **Identity Verification** | ✅ | ✅ | 🎯 | P1 | High | Cryptographic fingerprints |
+| **Channel Encryption** | ✅ | ✅ | 🎯 | P0 | High | Password-based encryption |
+| **Key Management** | ✅ | ✅ | 🎯 | P0 | High | Secure key storage |
+
+### Advanced Security Features
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Perfect Forward Secrecy** | ✅ | ✅ | 🎯 | P1 | High | Automatic key rotation |
+| **Deniable Authentication** | ✅ | ✅ | 🎯 | P2 | High | Plausible deniability |
+| **Anonymous Messaging** | ⚠️ | ⚠️ | 🎯 | P2 | High | Anonymous peer IDs |
+| **Message Padding** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Traffic analysis resistance |
+| **Cover Traffic** | ⚠️ | ⚠️ | 🎯 | P3 | High | Dummy message generation |
+| **Emergency Wipe** | ✅ | ✅ | 🎯 | P1 | Medium | Secure data deletion |
+| **Secure Boot** | ⚠️ | ⚠️ | ⚠️ | P3 | High | Platform-dependent |
+| **Hardware Security** | ⚠️ | ⚠️ | ⚠️ | P3 | High | TEE/Secure Enclave |
+
+## User Interface Features
+
+### Core UI Components
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Chat Interface** | ✅ | ✅ | 🎯 | P0 | Medium | Terminal-inspired design |
+| **Channel List** | ✅ | ✅ | 🎯 | P0 | Medium | Sidebar/drawer navigation |
+| **Message Input** | ✅ | ✅ | 🎯 | P0 | Medium | Text input with commands |
+| **Status Indicators** | ✅ | ✅ | 🎯 | P0 | Medium | Connection/encryption status |
+| **Settings Screen** | ✅ | ✅ | 🎯 | P0 | Medium | Configuration interface |
+| **Peer List** | ✅ | ✅ | 🎯 | P1 | Medium | Connected peers display |
+| **Dark Theme** | ✅ | ✅ | 🎯 | P0 | Low | Default dark theme |
+| **Light Theme** | ✅ | ✅ | 🎯 | P1 | Low | Optional light theme |
+
+### Advanced UI Features
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Responsive Design** | ⚠️ | ⚠️ | 🎯 | P1 | Medium | Tablet/desktop layouts |
+| **Accessibility** | ⚠️ | ⚠️ | 🎯 | P1 | Medium | Screen reader support |
+| **Internationalization** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Multi-language support |
+| **Custom Themes** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | User-defined themes |
+| **Font Scaling** | ⚠️ | ⚠️ | 🎯 | P2 | Low | Accessibility feature |
+| **Keyboard Shortcuts** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Desktop productivity |
+| **Gesture Support** | ✅ | ✅ | 🎯 | P2 | Medium | Swipe actions |
+| **Animation Effects** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Smooth transitions |
+
+## Command System Features
+
+### Basic Commands
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **IRC-style Commands** | ✅ | ✅ | 🎯 | P0 | Medium | /join, /leave, /msg, etc. |
+| **Command Parsing** | ✅ | ✅ | 🎯 | P0 | Medium | Argument parsing |
+| **Command History** | ✅ | ✅ | 🎯 | P1 | Low | Up/down arrow navigation |
+| **Command Auto-complete** | ✅ | ✅ | 🎯 | P1 | Medium | Tab completion |
+| **Help System** | ✅ | ✅ | 🎯 | P1 | Low | /help command |
+| **Error Handling** | ✅ | ✅ | 🎯 | P0 | Medium | User-friendly error messages |
+| **Command Aliases** | ✅ | ✅ | 🎯 | P2 | Low | Short command forms |
+| **Command Validation** | ✅ | ✅ | 🎯 | P1 | Medium | Parameter validation |
+
+### Advanced Commands
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **System Commands** | ✅ | ✅ | 🎯 | P1 | Medium | /peers, /channels, /mesh |
+| **Debug Commands** | ✅ | ✅ | 🎯 | P2 | Medium | /debug, /logs, /stats |
+| **Admin Commands** | ✅ | ✅ | 🎯 | P2 | High | Channel administration |
+| **Scripting Support** | ❌ | ❌ | 🔮 | P4 | High | Future feature |
+| **Custom Commands** | ❌ | ❌ | 🔮 | P4 | High | User-defined commands |
+| **Command Macros** | ❌ | ❌ | 🔮 | P4 | High | Command sequences |
+| **Conditional Commands** | ❌ | ❌ | 🔮 | P4 | High | If/then logic |
+| **Command Scheduling** | ❌ | ❌ | 🔮 | P4 | High | Timed execution |
 
 ## Platform-Specific Features
 
-| Feature | iOS | Android | Flutter | Notes |
-|---------|-----|---------|---------|-------|
-| **iOS Specific** |||||
-| Native SwiftUI | ✓ | N/A | N/A | iOS UI framework |
-| Background Modes | ✓ | N/A | ✓ | iOS specific |
-| Keychain Integration | ✓ | N/A | ✓ | Secure storage |
-| **Android Specific** |||||
-| Jetpack Compose UI | N/A | ✓ | N/A | Android UI framework |
-| Foreground Service | N/A | ✓ | ✓ | For persistent connections |
-| Material Design 3 | N/A | ✓ | ✓ | Android design language |
-| **Flutter Cross-Platform** |||||
-| Single Codebase | N/A | N/A | ✓ | Unified development |
-| Platform Channels | N/A | N/A | ✓ | Native code bridging |
-| Adaptive UI | N/A | N/A | ✓ | Platform-specific adaptations |
+### iOS-Specific Features
 
-## Command Support
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Background App Refresh** | N/A | ✅ | 🎯 | P1 | High | iOS background processing |
+| **Keychain Integration** | N/A | ✅ | 🎯 | P1 | Medium | Secure key storage |
+| **Core Bluetooth** | N/A | ✅ | 🎯 | P0 | High | Native BLE framework |
+| **SwiftUI Integration** | N/A | ✅ | 🎯 | P0 | Medium | Native UI patterns |
+| **Shortcuts App** | N/A | ⚠️ | 🔮 | P4 | High | Siri shortcuts |
+| **Handoff Support** | N/A | ❌ | 🔮 | P4 | High | Cross-device continuity |
+| **Spotlight Search** | N/A | ⚠️ | 🔮 | P3 | Medium | System search integration |
+| **Widget Support** | N/A | ⚠️ | 🔮 | P3 | Medium | Home screen widgets |
 
-| Command | iOS | Android | Flutter | Description |
-|---------|-----|---------|---------|-------------|
-| /j, /join | ✓ | ✓ | ✓ | Join a channel |
-| /m, /msg | ✓ | ✓ | ✓ | Send a private message |
-| /w, /who | ✓ | ✓ | ✓ | List users |
-| /channels | ✓ | ✓ | ✓ | List available channels |
-| /block | ✓ | ✓ | ✓ | Block a peer |
-| /unblock | ✓ | ✓ | ✓ | Unblock a peer |
-| /clear | ✓ | ✓ | ✓ | Clear chat messages |
-| /pass | ✓ | ✓ | ✓ | Set/change channel password |
-| /transfer | ✓ | ✓ | ✓ | Transfer channel ownership |
-| /save | ✓ | ✓ | ✓ | Toggle message retention |
-| /peers | ✓ | ✓ | ✓ | Show connected peers |
-| /mesh | ✓ | ✓ | ✓ | Show mesh network status |
-| /battery | ✓ | ✓ | ✓ | Show battery optimization status |
-| /encrypt | ✓ | ✓ | ✓ | Show encryption status |
-| /wipe | ✓ | ✓ | ✓ | Emergency data wipe |
+### Android-Specific Features
 
-## Planned Features
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Foreground Service** | ✅ | N/A | 🎯 | P1 | High | Background operation |
+| **Android Keystore** | ✅ | N/A | 🎯 | P1 | Medium | Hardware-backed keys |
+| **Bluetooth Adapter** | ✅ | N/A | 🎯 | P0 | High | Native BLE framework |
+| **Jetpack Compose** | ✅ | N/A | 🎯 | P0 | Medium | Modern UI framework |
+| **Work Manager** | ✅ | N/A | 🎯 | P2 | Medium | Background tasks |
+| **Notification Channels** | ✅ | N/A | 🎯 | P2 | Medium | Rich notifications |
+| **Adaptive Icons** | ✅ | N/A | 🎯 | P3 | Low | Dynamic app icons |
+| **Scoped Storage** | ✅ | N/A | 🎯 | P2 | Medium | Privacy-compliant storage |
 
-| Feature | iOS | Android | Flutter | Target Release |
-|---------|-----|---------|---------|---------------|
-| WiFi Direct Integration | Implemented | Implemented | v1.0 | November 2025 |
-| Multi-Transport Mesh | Implemented | Implemented | v1.0 | November 2025 |
-| Advanced Message Threading | Planned | Planned | v1.1 | Q1 2026 |
-| File Sharing | Implemented | Implemented | v1.1 | Q1 2026 |
-| Voice Messages | Planned | Planned | v1.2 | Q2 2026 |
-| Ultrasonic Transport | Research | Research | v1.5 | 2026 |
-| LoRa Integration | Research | Research | v2.0 | 2027 |
+### Desktop-Specific Features
 
-## Compatibility Matrix
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Multi-window Support** | ❌ | ❌ | 🎯 | P2 | High | Desktop productivity |
+| **System Tray** | ❌ | ❌ | 🎯 | P2 | Medium | Background operation |
+| **Keyboard Shortcuts** | ❌ | ❌ | 🎯 | P2 | Medium | Desktop navigation |
+| **Menu Bar** | ❌ | ❌ | 🎯 | P2 | Medium | Native menus |
+| **File System Access** | ❌ | ❌ | 🎯 | P3 | Medium | Import/export features |
+| **Window Management** | ❌ | ❌ | 🎯 | P3 | Medium | Resize, minimize, etc. |
+| **Native Notifications** | ❌ | ❌ | 🎯 | P2 | Medium | System notifications |
+| **Auto-start** | ❌ | ❌ | 🎯 | P3 | Medium | Launch on system boot |
 
-This section details the cross-compatibility between different BitChat implementations:
+## Performance and Optimization
 
-| From ↓ / To → | iOS BitChat | Android BitChat | Flutter iOS | Flutter Android |
-|---------------|-------------|-----------------|-------------|-----------------|
-| iOS BitChat | ✓ | ✓ | ✓ | ✓ |
-| Android BitChat | ✓ | ✓ | ✓ | ✓ |
-| Flutter iOS | ✓ | ✓ | ✓ | ✓ |
-| Flutter Android | ✓ | ✓ | ✓ | ✓ |
+### Core Performance Features
 
-## Platform Requirements
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Battery Optimization** | ✅ | ✅ | 🎯 | P0 | High | Adaptive scanning/advertising |
+| **Memory Management** | ✅ | ✅ | 🎯 | P0 | High | Efficient memory usage |
+| **CPU Optimization** | ✅ | ✅ | 🎯 | P0 | High | Low CPU usage |
+| **Network Efficiency** | ✅ | ✅ | 🎯 | P0 | High | Minimal BLE traffic |
+| **Storage Optimization** | ✅ | ✅ | 🎯 | P1 | Medium | Efficient data storage |
+| **Startup Performance** | ✅ | ✅ | 🎯 | P1 | Medium | Fast app launch |
+| **UI Responsiveness** | ✅ | ✅ | 🎯 | P0 | Medium | Smooth user interface |
+| **Background Efficiency** | ✅ | ✅ | 🎯 | P1 | High | Minimal background usage |
 
-| Platform | Minimum Version | Target Version | BLE Support | WiFi Direct Support |
-|----------|----------------|----------------|-------------|---------------------|
-| iOS | iOS 14.0 | iOS 16.0+ | Required | Via MultipeerConnectivity |
-| macOS | macOS 11.0 | macOS 13.0+ | Required | Via MultipeerConnectivity |
-| Android | API 26 (8.0) | API 34 (14) | Required | Via WiFi P2P API |
-| Windows (Flutter) | Windows 10 | Windows 11 | Required | Limited |
-| Linux (Flutter) | Ubuntu 20.04 | Ubuntu 22.04 | Required | Limited |
+### Advanced Performance Features
 
-## Summary
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Adaptive Quality** | ⚠️ | ⚠️ | 🎯 | P2 | High | Adjust based on conditions |
+| **Connection Pooling** | ✅ | ✅ | 🎯 | P1 | High | Efficient connection reuse |
+| **Message Batching** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Batch multiple messages |
+| **Compression** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Message compression |
+| **Caching Strategy** | ✅ | ✅ | 🎯 | P1 | Medium | Intelligent data caching |
+| **Lazy Loading** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Load data on demand |
+| **Prefetching** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Anticipatory data loading |
+| **Resource Pooling** | ⚠️ | ⚠️ | 🎯 | P2 | High | Reuse expensive resources |
 
-The BitChat Flutter implementation aims for 100% feature parity with the original iOS and Android versions, ensuring seamless cross-platform compatibility. Any deviations or platform-specific implementations are clearly documented in this matrix.
+## Development and Debugging
 
-The core functionality of mesh networking, end-to-end encryption, and IRC-style messaging is identical across all implementations, with only UI frameworks and platform-specific optimizations differing between versions.
+### Development Tools
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Debug Mode** | ✅ | ✅ | 🎯 | P1 | Medium | Enhanced logging/debugging |
+| **Network Inspector** | ✅ | ✅ | 🎯 | P2 | High | BLE traffic analysis |
+| **Performance Profiler** | ⚠️ | ⚠️ | 🎯 | P2 | High | Performance monitoring |
+| **Memory Profiler** | ⚠️ | ⚠️ | 🎯 | P2 | High | Memory usage analysis |
+| **Log Viewer** | ✅ | ✅ | 🎯 | P2 | Medium | In-app log viewing |
+| **Crash Reporting** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Automatic crash reports |
+| **Analytics** | ⚠️ | ⚠️ | 🎯 | P3 | Medium | Usage analytics |
+| **A/B Testing** | ❌ | ❌ | 🔮 | P4 | High | Feature testing |
+
+### Testing Features
+
+| Feature | Android BitChat | iOS BitChat | Flutter Target | Priority | Complexity | Notes |
+|---------|----------------|-------------|----------------|----------|------------|-------|
+| **Unit Testing** | ✅ | ✅ | 🎯 | P1 | Medium | Comprehensive test coverage |
+| **Integration Testing** | ✅ | ✅ | 🎯 | P1 | High | Cross-platform testing |
+| **UI Testing** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Automated UI tests |
+| **Performance Testing** | ⚠️ | ⚠️ | 🎯 | P2 | High | Automated performance tests |
+| **Security Testing** | ⚠️ | ⚠️ | 🎯 | P2 | High | Cryptographic validation |
+| **Compatibility Testing** | ✅ | ✅ | 🎯 | P1 | High | Cross-platform compatibility |
+| **Load Testing** | ⚠️ | ⚠️ | 🎯 | P3 | High | Network stress testing |
+| **Regression Testing** | ⚠️ | ⚠️ | 🎯 | P2 | Medium | Automated regression tests |
+
+## Implementation Priority Matrix
+
+### Phase 1: Core Foundation (P0 Features)
+**Target: MVP with basic messaging capability**
+
+#### Essential Features (Must Have)
+- ✅ Text messaging with UTF-8 support
+- ✅ Message history and persistence
+- ✅ Channel creation, joining, and leaving
+- ✅ BLE advertising and scanning
+- ✅ Connection management (up to 8 connections)
+- ✅ TTL-based message routing
+- ✅ End-to-end encryption (X25519 + AES-256-GCM)
+- ✅ Noise Protocol implementation
+- ✅ IRC-style command system
+- ✅ Basic chat interface
+- ✅ Dark theme support
+
+**Estimated Timeline: 8-12 weeks**
+**Team Size: 2-3 developers**
+**Risk Level: Medium-High (BLE and crypto complexity)**
+
+### Phase 2: Enhanced Functionality (P1 Features)
+**Target: Feature parity with reference implementations**
+
+#### Important Features (Should Have)
+- ✅ Store & forward messaging
+- ✅ Read and delivery receipts
+- ✅ Presence status indicators
+- ✅ Channel administration
+- ✅ Peer verification and fingerprints
+- ✅ Emergency wipe functionality
+- ✅ Message search capability
+- ✅ Command auto-completion
+- ✅ Network topology awareness
+- ✅ Battery optimization
+- ✅ Background processing (platform-specific)
+
+**Estimated Timeline: 6-8 weeks**
+**Team Size: 2-3 developers**
+**Risk Level: Medium (platform integration complexity)**
+
+### Phase 3: Advanced Features (P2 Features)
+**Target: Enhanced user experience and security**
+
+#### Nice to Have Features
+- ✅ Message formatting (basic markdown)
+- ✅ Typing indicators
+- ✅ Anonymous messaging
+- ✅ Message padding for privacy
+- ✅ Advanced channel moderation
+- ✅ Responsive design for tablets/desktop
+- ✅ Accessibility support
+- ✅ Debug and diagnostic tools
+- ✅ Performance monitoring
+- ✅ Internationalization support
+
+**Estimated Timeline: 8-10 weeks**
+**Team Size: 2-4 developers**
+**Risk Level: Low-Medium (mostly UI/UX enhancements)**
+
+### Phase 4: Future Enhancements (P3-P4 Features)
+**Target: Advanced capabilities and ecosystem integration**
+
+#### Future Features
+- 🔮 Message reactions and threading
+- 🔮 Voice messages and attachments
+- 🔮 Custom themes and UI customization
+- 🔮 Scripting and automation
+- 🔮 Bridge nodes for internet connectivity
+- 🔮 Advanced analytics and monitoring
+- 🔮 Platform-specific integrations (Shortcuts, Widgets)
+- 🔮 Multi-window support for desktop
+
+**Estimated Timeline: 12-16 weeks**
+**Team Size: 3-5 developers**
+**Risk Level: Variable (depends on specific features)**
+
+## Complexity Analysis
+
+### High Complexity Features (Require Specialized Expertise)
+
+| Feature | Complexity Factors | Required Expertise | Risk Mitigation |
+|---------|-------------------|-------------------|-----------------|
+| **BLE Mesh Networking** | Platform differences, connection limits, reliability | Bluetooth/networking expert | Extensive testing, fallback mechanisms |
+| **Noise Protocol** | Cryptographic implementation, key management | Security/crypto expert | Use proven libraries, security audit |
+| **Store & Forward** | Message persistence, network partitioning | Distributed systems expert | Careful state management, testing |
+| **Battery Optimization** | Platform-specific power management | Mobile optimization expert | Platform-specific implementations |
+| **Cross-platform BLE** | Platform API differences, limitations | Flutter/native development | Platform abstraction layer |
+
+### Medium Complexity Features (Standard Development)
+
+| Feature | Complexity Factors | Required Expertise | Risk Mitigation |
+|---------|-------------------|-------------------|-----------------|
+| **Message Routing** | TTL logic, duplicate detection | Network programming | Clear algorithms, unit testing |
+| **Channel Management** | State synchronization, permissions | Backend development | State machines, validation |
+| **Command System** | Parsing, validation, execution | CLI/parser development | Grammar-based parsing, testing |
+| **UI/UX Implementation** | Responsive design, accessibility | Flutter UI development | Design system, user testing |
+| **Data Persistence** | Storage optimization, migration | Database development | Schema versioning, backup/restore |
+
+### Low Complexity Features (Straightforward Implementation)
+
+| Feature | Complexity Factors | Required Expertise | Risk Mitigation |
+|---------|-------------------|-------------------|-----------------|
+| **Basic Messaging** | Text handling, timestamps | General development | Standard practices, validation |
+| **Theming** | Color schemes, styling | UI development | Design tokens, testing |
+| **Settings Management** | Preferences, validation | General development | Configuration patterns |
+| **Message Search** | Text indexing, filtering | General development | Existing search libraries |
+| **Help System** | Documentation, formatting | Technical writing | Clear documentation |
+
+## Resource Requirements
+
+### Development Team Composition
+
+#### Core Team (Phase 1)
+- **Lead Developer**: Flutter/Dart expertise, architecture decisions
+- **Bluetooth Specialist**: BLE implementation, platform integration
+- **Security Engineer**: Cryptographic implementation, security review
+- **UI/UX Developer**: Interface design, user experience
+
+#### Extended Team (Phase 2-3)
+- **Platform Specialists**: iOS/Android native integration
+- **QA Engineer**: Testing strategy, automation
+- **DevOps Engineer**: CI/CD, deployment automation
+- **Technical Writer**: Documentation, user guides
+
+### Infrastructure Requirements
+
+#### Development Infrastructure
+- **CI/CD Pipeline**: Automated testing, building, deployment
+- **Device Testing**: Physical devices for BLE testing
+- **Security Testing**: Penetration testing, code analysis
+- **Performance Testing**: Load testing, profiling tools
+
+#### Testing Infrastructure
+- **Multi-platform Testing**: iOS, Android, desktop platforms
+- **Network Testing**: Mesh network simulation, stress testing
+- **Compatibility Testing**: Cross-platform protocol validation
+- **Security Testing**: Cryptographic validation, vulnerability assessment
+
+## Success Metrics
+
+### Technical Metrics
+
+| Metric | Target | Measurement Method | Priority |
+|--------|--------|--------------------|----------|
+| **Protocol Compatibility** | 100% | Cross-platform messaging tests | P0 |
+| **Message Delivery Rate** | >99.9% | Automated reliability tests | P0 |
+| **Battery Usage** | <5% per hour | Device monitoring | P0 |
+| **Memory Usage** | <100MB | Profiling tools | P1 |
+| **Startup Time** | <3 seconds | Performance tests | P1 |
+| **Connection Success Rate** | >95% | BLE connection tests | P0 |
+| **Encryption Performance** | >100 ops/sec | Crypto benchmarks | P1 |
+| **UI Responsiveness** | <100ms | User interaction tests | P1 |
+
+### User Experience Metrics
+
+| Metric | Target | Measurement Method | Priority |
+|--------|--------|--------------------|----------|
+| **Time to First Message** | <2 minutes | User testing | P0 |
+| **Feature Discovery** | >80% | Usability testing | P1 |
+| **Error Recovery** | <30 seconds | Failure scenario testing | P1 |
+| **Cross-platform UX** | Consistent | Comparative analysis | P1 |
+| **Accessibility Score** | >90% | Automated accessibility testing | P2 |
+| **User Satisfaction** | >4.5/5 | User surveys | P2 |
+
+### Business Metrics
+
+| Metric | Target | Measurement Method | Priority |
+|--------|--------|--------------------|----------|
+| **Development Velocity** | 2-week sprints | Sprint tracking | P1 |
+| **Code Quality** | >80% coverage | Automated testing | P1 |
+| **Bug Density** | <1 per KLOC | Issue tracking | P1 |
+| **Security Vulnerabilities** | 0 critical | Security scanning | P0 |
+| **Platform Parity** | 100% features | Feature comparison | P1 |
+| **Release Cadence** | Monthly | Release tracking | P2 |
+
+## Conclusion
+
+This feature matrix provides a comprehensive roadmap for BitChat Flutter development, ensuring feature parity with mature iOS and Android implementations while leveraging Flutter's cross-platform advantages. The phased approach balances development complexity with user value delivery, prioritizing core messaging functionality before advanced features.
+
+Key success factors include:
+
+1. **Protocol Compatibility**: Maintaining 100% compatibility with existing implementations
+2. **Security First**: Implementing robust encryption and privacy features
+3. **Performance Focus**: Optimizing for mobile constraints and battery life
+4. **User Experience**: Providing intuitive, accessible interface design
+5. **Quality Assurance**: Comprehensive testing across platforms and scenarios
+
+The implementation should follow the defined priority matrix, starting with P0 features for MVP delivery, then progressively adding P1-P2 features for enhanced functionality. P3-P4 features represent future opportunities for differentiation and ecosystem integration.
+
+Regular assessment against success metrics will ensure the Flutter implementation meets quality standards and user expectations while maintaining compatibility with the broader BitChat ecosystem.

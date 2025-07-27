@@ -25,6 +25,15 @@ BitChat uses a custom binary protocol designed for efficient communication over 
 
 The protocol maintains strict binary compatibility across iOS, Android, and Flutter implementations.
 
+### Protocol Diagrams
+
+For detailed visual representations of the protocol, see the [Protocol Diagrams](../assets/protocol_diagrams/) directory:
+
+- **[Protocol Flow](../assets/protocol_diagrams/protocol_flow.md)**: Message flow sequences and interaction patterns
+- **[Packet Structure](../assets/protocol_diagrams/packet_structure.md)**: Detailed binary packet format specifications
+- **[Mesh Topology](../assets/protocol_diagrams/mesh_topology.md)**: Network topology patterns and routing algorithms
+- **[Encryption Flow](../assets/protocol_diagrams/encryption_flow.md)**: Cryptographic processes and key management
+
 ## Binary Packet Format
 
 All BitChat packets follow this structure:
@@ -321,14 +330,285 @@ const int FLAG_SIGN = 0x08;
 - **Error Message**: For critical application errors
 - **Retry Logic**: With exponential backoff
 
-### Packet Validation
+### Flutter Binary Protocol Implementation
+
 ```dart
-bool validatePacket(List<int> packet) {
-  if (packet.length < 13) return false;
-  if (packet[0] != 0x01) return false; // Version check
-  if (packet[2] > 7) return false; // TTL check
-  if (packet[12] != packet.length - 13) return false; // Length check
-  return true;
+// Flutter-optimized packet validation with comprehensive error handling
+class FlutterPacketValidator {
+  static const int HEADER_LENGTH = 13;
+  static const int MAX_PACKET_SIZE = 512;
+  static const int PROTOCOL_VERSION = 0x01;
+  static const int MAX_TTL = 7;
+  
+  static PacketValidationResult validatePacket(Uint8List packet) {
+    try {
+      // Basic length check
+      if (packet.length < HEADER_LENGTH) {
+        return PacketValidationResult.invalid('Packet too short: ${packet.length} bytes');
+      }
+      
+      if (packet.length > MAX_PACKET_SIZE) {
+        return PacketValidationResult.invalid('Packet too large: ${packet.length} bytes');
+      }
+      
+      // Version check
+      if (packet[0] != PROTOCOL_VERSION) {
+        return PacketValidationResult.invalid('Invalid protocol version: 0x${packet[0].toRadixString(16)}');
+      }
+      
+      // Message type validation
+      final messageType = packet[1];
+      if (!MessageType.isValid(messageType)) {
+        return PacketValidationResult.invalid('Invalid message type: 0x${messageType.toRadixString(16)}');
+      }
+      
+      // TTL validation
+      final ttl = packet[2];
+      if (ttl > MAX_TTL) {
+        return PacketValidationResult.invalid('TTL too high: $ttl');
+      }
+      
+      // Payload length validation
+      final payloadLength = packet[12];
+      final expectedLength = HEADER_LENGTH + payloadLength;
+      if (packet.length != expectedLength) {
+        return PacketValidationResult.invalid(
+          'Length mismatch: expected $expectedLength, got ${packet.length}'
+        );
+      }
+      
+      // Additional validation based on message type
+      final additionalValidation = _validateMessageTypeSpecific(packet);
+      if (!additionalValidation.isValid) {
+        return additionalValidation;
+      }
+      
+      return PacketValidationResult.valid();
+      
+    } catch (e) {
+      return PacketValidationResult.invalid('Validation error: $e');
+    }
+  }
+  
+  static PacketValidationResult _validateMessageTypeSpecific(Uint8List packet) {
+    final messageType = MessageType.fromValue(packet[1]);
+    
+    switch (messageType) {
+      case MessageType.discovery:
+        return _validateDiscoveryPacket(packet);
+      case MessageType.channelMessage:
+        return _validateChannelMessagePacket(packet);
+      case MessageType.privateMessage:
+        return _validatePrivateMessagePacket(packet);
+      case MessageType.routing:
+        return _validateRoutingPacket(packet);
+      case MessageType.fragment:
+        return _validateFragmentPacket(packet);
+      default:
+        return PacketValidationResult.valid();
+    }
+  }
+  
+  static PacketValidationResult _validateDiscoveryPacket(Uint8List packet) {
+    if (packet.length < HEADER_LENGTH + 36) { // 4 bytes info + 32 bytes public key
+      return PacketValidationResult.invalid('Discovery packet too short');
+    }
+    return PacketValidationResult.valid();
+  }
+  
+  static PacketValidationResult _validateChannelMessagePacket(Uint8List packet) {
+    if (packet.length < HEADER_LENGTH + 8) { // Minimum channel message size
+      return PacketValidationResult.invalid('Channel message packet too short');
+    }
+    return PacketValidationResult.valid();
+  }
+  
+  static PacketValidationResult _validatePrivateMessagePacket(Uint8List packet) {
+    if (packet.length < HEADER_LENGTH + 60) { // 32 bytes public key + 12 nonce + 16 tag
+      return PacketValidationResult.invalid('Private message packet too short');
+    }
+    return PacketValidationResult.valid();
+  }
+  
+  static PacketValidationResult _validateRoutingPacket(Uint8List packet) {
+    if (packet.length < HEADER_LENGTH + 5) { // Minimum routing packet size
+      return PacketValidationResult.invalid('Routing packet too short');
+    }
+    return PacketValidationResult.valid();
+  }
+  
+  static PacketValidationResult _validateFragmentPacket(Uint8List packet) {
+    if (packet.length < HEADER_LENGTH + 8) { // Fragment header size
+      return PacketValidationResult.invalid('Fragment packet too short');
+    }
+    return PacketValidationResult.valid();
+  }
+}
+
+class PacketValidationResult {
+  final bool isValid;
+  final String? errorMessage;
+  
+  PacketValidationResult.valid() : isValid = true, errorMessage = null;
+  PacketValidationResult.invalid(this.errorMessage) : isValid = false;
+}
+
+// Flutter-optimized packet builder
+class FlutterPacketBuilder {
+  static Uint8List buildPacket({
+    required MessageType messageType,
+    required int ttl,
+    required Uint8List sourceId,
+    required Uint8List destinationId,
+    required Uint8List payload,
+    int flags = 0,
+  }) {
+    if (sourceId.length != 4 || destinationId.length != 4) {
+      throw ArgumentError('Source and destination IDs must be 4 bytes');
+    }
+    
+    if (payload.length > 255) {
+      throw ArgumentError('Payload too large: ${payload.length} bytes');
+    }
+    
+    final packet = ByteData(13 + payload.length);
+    
+    // Header
+    packet.setUint8(0, FlutterPacketValidator.PROTOCOL_VERSION); // Version
+    packet.setUint8(1, messageType.value); // Message type
+    packet.setUint8(2, ttl); // TTL
+    packet.setUint8(3, flags); // Flags
+    
+    // Source ID (4 bytes)
+    for (int i = 0; i < 4; i++) {
+      packet.setUint8(4 + i, sourceId[i]);
+    }
+    
+    // Destination ID (4 bytes)
+    for (int i = 0; i < 4; i++) {
+      packet.setUint8(8 + i, destinationId[i]);
+    }
+    
+    // Payload length
+    packet.setUint8(12, payload.length);
+    
+    // Payload
+    final result = packet.buffer.asUint8List();
+    result.setRange(13, 13 + payload.length, payload);
+    
+    return result;
+  }
+}
+
+// Message type enumeration with Flutter-specific extensions
+enum MessageType {
+  discovery(0x01),
+  channelMessage(0x02),
+  privateMessage(0x03),
+  routing(0x04),
+  ack(0x05),
+  fragment(0x06),
+  ping(0x07),
+  pong(0x08);
+  
+  const MessageType(this.value);
+  final int value;
+  
+  static MessageType fromValue(int value) {
+    return MessageType.values.firstWhere(
+      (type) => type.value == value,
+      orElse: () => throw ArgumentError('Invalid message type: $value'),
+    );
+  }
+  
+  static bool isValid(int value) {
+    return MessageType.values.any((type) => type.value == value);
+  }
+}
+
+// Flutter-specific packet parsing with stream support
+class FlutterPacketParser {
+  final StreamController<BitChatPacket> _packetController = 
+      StreamController<BitChatPacket>.broadcast();
+  
+  Stream<BitChatPacket> get packetStream => _packetController.stream;
+  
+  void parsePacket(Uint8List data) {
+    try {
+      final validationResult = FlutterPacketValidator.validatePacket(data);
+      if (!validationResult.isValid) {
+        print('Invalid packet: ${validationResult.errorMessage}');
+        return;
+      }
+      
+      final packet = _parseValidPacket(data);
+      _packetController.add(packet);
+      
+    } catch (e) {
+      print('Packet parsing error: $e');
+    }
+  }
+  
+  BitChatPacket _parseValidPacket(Uint8List data) {
+    final header = PacketHeader(
+      version: data[0],
+      messageType: MessageType.fromValue(data[1]),
+      ttl: data[2],
+      flags: data[3],
+      sourceId: data.sublist(4, 8),
+      destinationId: data.sublist(8, 12),
+      payloadLength: data[12],
+    );
+    
+    final payload = data.sublist(13);
+    
+    return BitChatPacket(
+      header: header,
+      payload: payload,
+      rawData: data,
+    );
+  }
+  
+  void dispose() {
+    _packetController.close();
+  }
+}
+
+class PacketHeader {
+  final int version;
+  final MessageType messageType;
+  final int ttl;
+  final int flags;
+  final Uint8List sourceId;
+  final Uint8List destinationId;
+  final int payloadLength;
+  
+  PacketHeader({
+    required this.version,
+    required this.messageType,
+    required this.ttl,
+    required this.flags,
+    required this.sourceId,
+    required this.destinationId,
+    required this.payloadLength,
+  });
+}
+
+class BitChatPacket {
+  final PacketHeader header;
+  final Uint8List payload;
+  final Uint8List rawData;
+  final DateTime receivedAt;
+  
+  BitChatPacket({
+    required this.header,
+    required this.payload,
+    required this.rawData,
+  }) : receivedAt = DateTime.now();
+  
+  String get sourceIdHex => hex.encode(header.sourceId);
+  String get destinationIdHex => hex.encode(header.destinationId);
+  bool get isBroadcast => header.destinationId.every((byte) => byte == 0);
 }
 ```
 

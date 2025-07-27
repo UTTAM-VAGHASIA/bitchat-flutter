@@ -12,7 +12,7 @@ pubspec.lock
 bitchat/
 reference/
 scripts/
-examples/
+
 
 # dotenv environment variables file
 .env*

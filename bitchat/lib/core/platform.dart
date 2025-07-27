@@ -34,6 +34,8 @@ library;
 // Core service interface
 export 'services/platform_service.dart';
 export 'services/platform_service_factory.dart';
+export 'services/permission_manager.dart';
+export 'services/permission_manager_factory.dart';
 
 // Data models
 export 'models/platform_info.dart';
